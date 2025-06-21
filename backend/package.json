@@ -1,0 +1,22 @@
+{
+  "name": "crowdsourced-geotracker",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "listen": "node index.js"
+  },
+  "keywords": [],
+  "author": "community project",
+  "license": "GNU GPLv3",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.3",
+    "express-fileupload": "^1.3.1",
+    "moment": "^2.29.1",
+    "node-fetch": "^2.6.7",
+    "pg": "^8.7.3",
+    "sharp": "^0.34.2",
+    "xml2js": "^0.6.2"
+  }
+}

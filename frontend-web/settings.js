@@ -1,0 +1,27 @@
+const settings = {
+  backendUrl: 'http://127.0.0.1:5500',
+  googleMapsAPIKey: 'AIzaSyBj3zTr6cqa2pAlbYBqXYPDBH8E2KV_WL',
+  mapDefaultLocation: {
+    lat: 50.41311166314775,
+    lng: 30.46506531920826
+  },
+  mapCenterOnUsersLocationInBounds: {
+    latmin: 44.12810823870789,
+    lngmin: 21.30785244768581,
+    latmax: 51.92494910764881,
+    lngmax: 39.789226501012976
+  },
+  title: 'Crowdsourced GeoTracker',
+  aboutText: `
+    <div>
+      <b>Crowdsourced GeoTracker</b> usage:
+      <ul style="margin: 0.5rem 0">
+        <li><b>Click anywere on the map</b> to report your sighting. You can <b>add a photo</b> too.</li>
+        <li><b>Watch the map</b> to see <b>where the recent sightings</b> are.</li>
+        <li>You can check where the sightings were in the past by using the controls on the right.</li>
+      </ul>
+      <div style="font-size: 0.9rem; margin-top: 1rem;">This is an open-source project. Anyone can get it <a href="https://github.com/certicky/crowdsourced-geotracker" target="_blank">from GitHub</a> and deploy their own copy in minutes.</div>
+    </div>
+    <div style="padding-top: 1rem; padding-left: 1rem;"><a href="https://github.com/certicky/crowdsourced-geotracker" target="_blank"><img src="res/github.png" title="View on GitHub" /></a></div>
+  `
+}

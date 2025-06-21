@@ -1,0 +1,230 @@
+html, body {
+  font-family: courier,courier new,serif;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+}
+
+button {
+  background-color: black;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #6495ED;
+}
+
+select {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+}
+
+label {
+  display: block;
+}
+
+.marker-tt-type {
+  margin-top: 0.5rem;
+}
+
+.marker-tt-tweet {
+  min-height: 200px;
+  max-height: 400px;
+}
+
+.marker-tt-photo {
+  display: block;
+  cursor: pointer;
+}
+
+.marker-tt-photo img {
+  width: 100%;
+}
+
+.marker-tt-valid-from {
+  font-weight: bold;
+}
+
+.report-add-form select,
+.report-add-form input,
+.report-add-form button {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0 1rem 0;
+}
+
+.report-add-form input[type="text"] {
+  border: solid 1px gray;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  width: calc(100% - 1.5rem);
+  background-color: white;
+}
+
+#map {
+  height: 100%;
+}
+
+#about {
+  position: absolute;
+  width: calc(60% - 100px);
+  height: 9rem;
+  bottom: 1rem;
+  left: 1rem;
+  background-color: white;
+  border-radius: 0.25rem;
+  padding: 1rem 0.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  box-shadow: rgb(0 0 0 / 30%) 0px 1px 4px -1px;
+}
+
+#about img {
+  max-height: 5rem;
+}
+
+#controls {
+  position: absolute;
+  height: 10rem;
+  bottom: 1rem;
+  left: calc(60% - 100px + 3rem);
+  background-color: white;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  align-items: center;
+  box-shadow: rgb(0 0 0 / 30%) 0px 1px 4px -1px;
+}
+
+#controls .controls-row {
+  display: flex;
+  align-items: center;
+}
+
+#controls .controls-row>div {
+  width: 3.8rem;
+  text-align: center;
+  word-break: break-all;
+  font-size: 0.9rem;
+}
+
+#controls button {
+  margin: 0.25rem;
+  font-weight: bold;
+  width: 5rem;
+}
+
+#stats {
+  position: absolute;
+  width: calc(100% - 30rem);
+  top: 10px;
+  left: 15rem;
+  background-color: white;
+  border-radius: 0.25rem;
+  padding: 5px;
+  align-items: end;
+  display: flex;
+  overflow: hidden;
+  box-shadow: rgb(0 0 0 / 30%) 0px 1px 4px -1px;
+}
+
+.stats-col {
+  width: 15px;
+  background-color: #7B241C;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.stats-col.is-displayed-time {
+  background-color: red;
+  opacity: 0.85;
+}
+
+.stats-col:hover {
+  opacity: 1;
+}
+
+.stats-date-divider {
+  width: 1px;
+  background-color: gray;
+  overflow: visible;
+  font-size: 70%;
+  white-space: nowrap;
+}
+
+.stats-title {
+  font-size: 70%;
+  background-color: white;
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  padding: 0.25rem;
+  border-top-right-radius: 0.25rem;
+}
+
+/* MOBILE DEVICES / SMALL SCREENS  */
+@media only screen and (min-device-width: 1px) and (max-device-width: 768px) {
+  html, body, button, input, select, option {
+    font-size: 40px;
+  }
+
+  .hidden-on-mobile {
+    display: none !important;
+  }
+
+  .gm-style .gm-style-iw {
+    font-size: 40px;
+  }
+
+  #about {
+    display: block;
+    width: 40%;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  #controls {
+    left: unset;
+    right: 0.5rem;
+    font-size: 0.8rem;
+    max-width: 45%;
+    bottom: 0.5rem;
+    height: auto;
+  }
+
+  #controls button {
+    font-size: 0.8rem;
+    width: 4rem;
+  }
+
+  #controls .controls-row>div {
+    width: 2rem;
+  }
+
+  #stats {
+    max-width: calc(100% - 160px);
+    width: calc(15px * 48);
+    left: 20px;
+    top: 120px;
+  }
+
+  .gm-style-iw.gm-style-iw-c button.gm-ui-hover-effect {
+    width: 80px !important;
+    height: 80px !important;
+    background: white !important;
+  }
+  .gm-style-iw.gm-style-iw-c button.gm-ui-hover-effect img {
+    width: 80px !important;
+    height: 80px !important;
+    margin: 0 !important;
+  }
+}

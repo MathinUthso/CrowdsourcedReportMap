@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+  <html>
+  <head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <script type="text/javascript" src="./settings.js"></script>
+    <script type="text/javascript" src="./map-styles.js"></script>
+    <link rel="icon" type="image/x-icon" href="./res/favicon.png">
+    <link rel="stylesheet" type="text/css" href="./style.css?v=4" />
+    <title>Crowdsourced GeoTracker</title>
+    <meta property="og:image" content="./res/crowdsourced-geotracker-preview.png">
+    <meta property="og:url" content="./">
+    <meta name="twitter:card" content="summary_large_image">
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="about"></div>
+    <div id="controls">
+      <div class="controls-row">
+        <button onclick="decrementHour(24)">&lang;&lang;&lang; -1 day</button>
+        <div id="controls-date">-</div>
+        <button onclick="incrementHour(24)">+1 day &rang;&rang;&rang;</button>
+      </div>
+      <div class="controls-row">
+        <button onclick="decrementHour(1)">&lang;&lang; -1 hour</button>
+        <div id="controls-hour">-</div>
+        <button onclick="incrementHour(1)">+1 hour &rang;&rang;</button>
+      </div>
+      <div class="controls-row hidden-on-mobile">
+        <button onclick="decrementHour(0.25)">&lang; -15 m.</button>
+        <div id="controls-minute">-</div>
+        <button onclick="incrementHour(0.25)">+15 m. &rang;</button>
+      </div>
+    </div>
+    <div id="stats"></div>
+
+    <script type="text/javascript">
+      const isMobileDevice = (screen.width <= 768)
+      const isDarkMode = (isMobileDevice && (moment().format('HH') >= 18 || moment().format('HH') <= 7))
+      let markers = {}
+      let addReportMarker = null
+      let addReportTooltip = null
+      let dbRequestTimeout = null
+      let projectMetadata = {}
+      let map = null
+      let displayedTime = parseInt(moment().format('X'))
+
+      // Call any GET request
+      function requestAPIGet (uri, params, callback) {
+        var oReq = new XMLHttpRequest()
+        oReq.addEventListener('load', function reqListener () {
+          if (callback && this.response) callback(this.response)
+        })
+        oReq.open('GET', settings.backendUrl + uri + ((params && Object.keys(params) && Object.keys(params).length) ? '?' + Object.keys(params).map(k => k + '=' + params[k]).join('&') : ''))
+        oReq.send()
+      }
+
+      // Call any POST request
+      function requestAPIPost (uri, formData, callback) {
+        var oReq = new XMLHttpRequest()
+        oReq.addEventListener('load', function reqListener () {
+          if (callback && this.response) callback(this.response)
+        })
+        oReq.open('POST', settings.backendUrl + uri)
+        oReq.send(formData)
+      }
+
+      // Displays the numbers of valid reports for each hour in last 14 days in the timeline at the top
+      function renderStatistics () {
+        const statsEl = document.querySelector('#stats')
+        if (statsEl && projectMetadata && projectMetadata.validReportsInTime) {
+          const maxHeightPx = isMobileDevice ? 150 : 50
+          let maxInHour = 0
+          const validReports = isMobileDevice
+            ? projectMetadata.validReportsInTime.slice(-48)
+            : projectMetadata.validReportsInTime
+          validReports.forEach(h => {
+            if (parseInt(h.valid_reports) > maxInHour) maxInHour = parseInt(h.valid_reports)
+          })
+          let content = ''
+          let previousDate = ''
+          validReports.forEach(h => {
+            const currentDate = moment(h.hour).format('D. MMM.')
+            if (currentDate !== previousDate) {
+              if (previousDate !== '') content += '<div class="stats-date-divider" style="height: ' + maxHeightPx + 'px;" >&nbsp;' + currentDate + '</div>'
+              previousDate = currentDate
+            }
+            content += '<div class="stats-col' + ((moment(h.hour).isSame(moment(displayedTime, 'X'), 'hour')) ? ' is-displayed-time' : '') + '" style="height: ' + Math.round((h.valid_reports / maxInHour) * maxHeightPx) + 'px;" onclick="setDisplayedTime(' + moment(h.hour).format('X') + ')" title="' + moment(h.hour).format('D. MMM. YYYY HH:mm') + '"></div>'
+          })
+
+          content += '<div class="stats-title">Reports over time</div>'
+
+          statsEl.innerHTML = content
+        }
+      }
+
+      // Assigns a marker color based on report type
+      function getMarkerColorFromType (type) {
+        if (type === 'VEHICLES') return 'blue'
+        if (type === 'AIRCRAFT') return 'teal'
+        return 'red'
+      }
+
+      function setDisplayedTime (newTime) {
+        if (parseInt(displayedTime) === parseInt(newTime)) return
+        Object.keys(markers).forEach(locId => {
+          markers[locId].markerObject.setMap(null)
+          markers[locId].markerObject = null
+        })
+        markers = {}
+        displayedTime = parseInt(newTime)
+        loadReportsFromAPI()
+
+        const ctrlDateEl = document.querySelector('#controls-date')
+        const ctrlHourEl = document.querySelector('#controls-hour')
+        const ctrlMinuteEl = document.querySelector('#controls-minute')
+        ctrlDateEl.innerHTML = moment(parseInt(newTime), 'X').format('D. MMM.')
+        ctrlHourEl.innerHTML = moment(parseInt(newTime), 'X').format('HH:mm')
+        ctrlMinuteEl.innerHTML = moment(parseInt(newTime), 'X').format('HH:mm')
+
+        renderStatistics()
+      }
+
+      function decrementHour (n = 1) {
+        setDisplayedTime(displayedTime - (n * 3600))
+      }
+
+      function incrementHour (n = 1) {
+        if (displayedTime + (n * 3600) <= moment().format('X')) {
+          setDisplayedTime(displayedTime + (n * 3600))
+        }
+      }
+
+      function getTweetIdFromUrl (url) {
+        let urlAdjusted = url
+        if (url.includes('?')) urlAdjusted = url.split('?')[0]
+        const parts = urlAdjusted.split('/')
+        return parts[parts.length - 1]
+      }
+
+      // Closes the tooltip for adding new reports
+      function closeAddReportInterface () {
+        if (addReportTooltip) addReportTooltip.close()
+        if (addReportMarker) { addReportMarker.setMap(null); addReportMarker = null }
+      }
+
+      // Adds a new report using the API's POST /reports endpoint
+      function addNewReport () {
+        const formData = new FormData(document.querySelector('.report-add-form'))
+        requestAPIPost('/reports', formData, () => {
+          if (addReportTooltip) {
+            addReportTooltip.setContent('<h2>Thank you!</h2><div>Your report has been added.</div>')
+            setTimeout(() => {
+              setDisplayedTime(moment().format('X'))
+              loadReportsFromAPI()
+            }, 3000)
+          }
+        })
+        return false
+      }
+
+      // load reports from API, using current map's bounds
+      function loadReportsFromAPI () {
+        var bounds = map.getBounds()
+        var ne = bounds.getNorthEast()
+        var sw = bounds.getSouthWest()
+
+        requestAPIGet ('/reports', {
+          latmin: sw.lat(),
+          lonmin: sw.lng(),
+          latmax: ne.lat(),
+          lonmax: ne.lng(),
+          time: displayedTime
+        }, (response) => {
+          const locations = JSON.parse(response)
+          if (locations && locations.length) {
+            locations.forEach(loc => {
+              if (!markers[loc.id]) {
+                const reportAgeMinutes = moment(displayedTime, 'X').diff(loc.valid_from, 'minutes')
+                markers[loc.id] = loc
+                markers[loc.id].markerObject = new google.maps.Marker({
+                  position: new google.maps.LatLng(loc.lat, loc.lon),
+                  label: {
+                    text: loc.type.toUpperCase()[0],
+                    color: 'white'
+                  },
+                  title: loc.type.toUpperCase(),
+                  map: map,
+                  icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    strokeColor: getMarkerColorFromType(loc.type),
+                    fillColor: getMarkerColorFromType(loc.type),
+                    strokeWeight: 2,
+                    fillOpacity: (reportAgeMinutes <= 60) ? 1 : 0.35,
+                    strokeOpacity: (reportAgeMinutes <= 60) ? 1 : 0.45,
+                    scale: isMobileDevice ? 30 : 9
+                  }
+                })
+                markers[loc.id].markerObject.addListener('click', function (p) {
+                  // content for the 'Add Report' tooltip
+                  let content = ''
+                  if (loc.description) content += '<div class="marker-tt-description">' + loc.description + '</div>'
+                  if (loc.type) content += '<div class="marker-tt-type">Reported as <i>' + loc.type + '</i></div>'
+                  if (loc.lat && loc.lon) content += '<div class="marker-tt-location">' + loc.lat + ', ' + loc.lon + '</div>'
+                  if (loc.type) content += '<div class="marker-tt-valid-from">' + moment(loc.valid_from).format(moment(loc.valid_from).format('HH:mm') === '00:00' ? 'D. MMM. YYYY' : 'D. MMM. YYYY HH:mm') + '</div>'
+
+                  // media: Twitter link
+                  if (loc.media_url && (loc.media_url.includes('twitter.com/'))) {
+                    content += '<div id="tweet-container-' + loc.id + '" class="marker-tt-tweet"></div>'
+                    setTimeout(() => {
+                      twttr.widgets.createTweet(
+                        getTweetIdFromUrl(loc.media_url),
+                        document.getElementById('tweet-container-' + loc.id),
+                        {
+                          theme: isDarkMode ? 'dark' : 'light',
+                          conversation: 'none'
+                        }
+                      )
+                    }, 500)
+                  }
+
+                  // media: uploaded photos
+                  if (loc.media_url && loc.media_url.includes('./file_uploads/')) {
+                    content += '<a class="marker-tt-photo" href="' + settings.backendUrl + loc.media_url.replace('./file_uploads/', '/') + '" target="_blank"><img src="' + settings.backendUrl + loc.media_url.replace('./file_uploads/', '/') + '" /></a>'
+                  }
+
+                  // media: telegram posts
+                  if (loc.media_url && loc.media_url.includes('https://t.me/')) {
+                    content += '<br /><br />Source <b>Telegram</b> link: <a target="_blank" href="' + loc.media_url + '">' + loc.media_url + '</a>'
+                  }
+
+                  // media: youtube videos
+                  if (loc.media_url && loc.media_url.includes('https://www.youtube.com/embed/')) {
+                    content += '<br /><iframe width="420" height="315" src="' + loc.media_url + '"></iframe>'
+                  }
+
+                  // close other tooltips before opening this one
+                  if (addReportTooltip) addReportTooltip.close()
+                  Object.values(markers).forEach(m => {
+                    if (m.markerTooltip) m.markerTooltip.close()
+                  })
+
+                  markers[loc.id].markerTooltip = new google.maps.InfoWindow({
+                    content
+                  })
+                  markers[loc.id].markerTooltip.open({
+                    anchor: markers[loc.id].markerObject,
+                    map,
+                    shouldFocus: false
+                  })
+                })
+              }
+            })
+          }
+        })
+      }
+
+      function init () {
+        // create the map
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 7,
+          center: settings.mapDefaultLocation,
+          mapTypeId: 'roadmap',
+          controlSize: isMobileDevice ? 80 : undefined,
+          styles: isDarkMode ? stylesNightMode : undefined,
+          zoomControl: true,
+          zoomControlOptions: {
+            position: google.maps.ControlPosition.RIGHT_TOP
+          },
+          fullscreenControl: false,
+          streetViewControl: false
+        })
+
+        // try to center the map on current location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (position) {
+            var latitude = position.coords.latitude
+            var longitude = position.coords.longitude
+            // only center on users location if it's within the bounding box
+            // defined in settings.mapCenterOnUsersLocationInBounds. otherwise,
+            // remain in the default map location
+            if (latitude >= settings.mapCenterOnUsersLocationInBounds.latmin && latitude <= settings.mapCenterOnUsersLocationInBounds.latmax && longitude >= settings.mapCenterOnUsersLocationInBounds.lngmin && longitude <= settings.mapCenterOnUsersLocationInBounds.lngmax) {
+              var coords = new google.maps.LatLng(latitude, longitude)
+              map.setCenter(coords)
+              new google.maps.Marker({
+                position: coords,
+                map: map,
+                icon: './res/bluecircle.png',
+                title: 'My Location'
+              })
+            } else {
+              console.log('Current location(' + latitude + ',' + longitude +') is outside the bounding box where auto-centering is enabled. Keeping map at a default coordinates.')
+            }
+          })
+        }
+
+        // listen for map bounds change and reload the data (at most once per 1000ms)
+        google.maps.event.addListener(map, 'bounds_changed', function () {
+          if (dbRequestTimeout) {
+            window.clearTimeout(dbRequestTimeout)
+          }
+          dbRequestTimeout = window.setTimeout(loadReportsFromAPI, 1000)
+        })
+
+        // listen for map click and create marker + open tooltip
+        google.maps.event.addListener(map, 'click', (e) => {
+          closeAddReportInterface()
+
+          const someMarkerOpen = Object.values(markers).find(m => !!m.markerTooltip)
+          if (someMarkerOpen) {
+            someMarkerOpen.markerTooltip.close()
+            someMarkerOpen.markerTooltip = null
+            return false
+          }
+
+          addReportMarker = new google.maps.Marker({
+            position: e.latLng,
+            map: map,
+            icon: './res/redcircle.png'
+          })
+
+          // prepare the tooltip content
+          let content = '<h2>Adding a report:</h2>'
+          content += '<form class="report-add-form">'
+          content += '<input type="hidden" name="lat" value="' + e.latLng.lat() + '" />'
+          content += '<input type="hidden" name="lon" value="' + e.latLng.lng() + '" />'
+          content += '<label>What you see: '
+          content += '<select name="type" class="report-add-type">'
+          if (projectMetadata.supportedTypes) projectMetadata.supportedTypes.forEach(t => {
+            content += '<option value="' + t + '">' + t + '</option>'
+          })
+          content += '</select>'
+          content += '</label>'
+          content += '<label>Photo (optional): '
+          content += '<input type="file" accept="image/*;capture=camera" name="mediafile"></input>'
+          content += '</label>'
+          content += '<label>Description (optional): '
+          content += '<input type="text" name="description"></input>'
+          content += '</label>'
+          content += '<button type="button" onclick="addNewReport()">Send</button>'
+          content += '</form>'
+
+          // close other tooltips before opening this one
+          Object.values(markers).forEach(m => {
+            if (m.markerTooltip) {
+              m.markerTooltip.close()
+              m.markerTooltip = null
+            }
+          })
+
+          addReportTooltip = new google.maps.InfoWindow({
+            content
+          })
+          addReportTooltip.open({
+            anchor: addReportMarker,
+            map,
+            shouldFocus: true
+          })
+          google.maps.event.addListener(addReportTooltip, 'closeclick', (e) => { closeAddReportInterface() })
+        })
+
+        setTimeout(() => {
+          setDisplayedTime(parseInt(moment().format('X')))
+        }, 1000)
+      }
+
+      // load project's metadata
+      requestAPIGet ('/metadata', null, (response) => {
+        if (response) {
+          projectMetadata = JSON.parse(response)
+          renderStatistics()
+        }
+      })
+
+      // load Google Maps
+      var script = document.createElement('script')
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init'
+      script.async = true
+      document.head.appendChild(script)
+
+      // set the title according to settings
+      if (settings.title && settings.title !== '') document.title = settings.title
+
+      // set the about text according to settings
+      const aboutEl = document.querySelector('#about')
+      if (settings.aboutText && settings.aboutText !== '') {
+        if (aboutEl) aboutEl.innerHTML = settings.aboutText
+      } else {
+        if (aboutEl) aboutEl.remove()
+      }
+    </script>
+  </body>
+</html>
