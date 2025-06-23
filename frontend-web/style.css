@@ -398,17 +398,17 @@ label {
 }
 
 #stats {
-  position: absolute;
-  width: calc(100% - 30rem);
-  top: 70px; /* Account for navbar */
-  left: 15rem;
+  position        : absolute;
+  width           : calc(100% - 30rem);
+  top             : 70px;                               /* Account for navbar */
+  left            : 15rem;
   background-color: white;
-  border-radius: 0.25rem;
-  padding: 20px;
-  align-items: flex-start;
-  display: flex;
-  overflow: hidden;
-  box-shadow: rgb(0 0 0 / 30%) 0px 1px 4px -1px;
+  border-radius   : 0.25rem;
+  padding         : 20px;
+  align-items     : flex-start;
+  display         : flex;
+  overflow        : hidden;
+  box-shadow      : rgb(0 0 0 / 30%) 0px 1px 4px -1px;
 }
 
 .stats-col {
