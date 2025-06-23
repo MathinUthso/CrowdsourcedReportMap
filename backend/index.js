@@ -1,32 +1,172 @@
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 const fileUpload = require('express-fileupload')
 const bodyParser = require('body-parser')
+const path = require('path')
+
+// Import API modules
 const reports = require('./api/reports')
 const metadata = require('./api/metadata')
-const { listenPort } = require('./settings')
+const users = require('./api/users')
+const comments = require('./api/comments')
+const votes = require('./api/votes')
+
+// Import middleware
+const { authenticateToken, requireRole, optionalAuth } = require('./middleware/auth')
+
+// Import settings
+const { listenPort, rateLimitWindowMs, rateLimitMax, uploadPath } = require('./settings')
 
 const app = express()
-app.use(cors())
-app.use(bodyParser.json())
-app.use(
-  bodyParser.urlencoded({
-    extended: true
-  })
-)
-app.use(fileUpload({
-    createParentPath: true
+
+// Security middleware
+app.use(helmet())
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? false : true,
+  credentials: true
 }))
 
-// connect API endpoints
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: rateLimitWindowMs,
+  max: rateLimitMax,
+  message: { error: 'Too many requests from this IP, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+app.use(limiter)
+
+// Body parsing middleware
+app.use(bodyParser.json({ limit: '10mb' }))
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }))
+
+// File upload middleware
+app.use(fileUpload({
+  createParentPath: true,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  abortOnLimit: true,
+  useTempFiles: true,
+  tempFileDir: path.join(__dirname, 'temp_uploads') // Use local temp directory
+}))
+
+// Create upload directory if it doesn't exist
+const fs = require('fs')
+try {
+  if (!fs.existsSync(uploadPath)) {
+    fs.mkdirSync(uploadPath, { recursive: true })
+    console.log(`✅ Created upload directory: ${uploadPath}`)
+  }
+} catch (error) {
+  console.error(`❌ Failed to create upload directory: ${error.message}`)
+  console.log('💡 Make sure you have write permissions in the backend directory')
+}
+
+// API Routes
+
+// Authentication routes (no auth required)
+app.post('/auth/register', users.register)
+app.post('/auth/login', users.login)
+
+// Metadata routes (no auth required)
 app.get('/metadata', metadata.getMetadata)
-app.get('/reports', reports.getReportsInBoundingBox)
-app.post('/reports', reports.createReport)
+app.get('/metadata/report-types', metadata.getReportTypes)
+app.get('/metadata/locations', metadata.getLocations)
 
-// serve static files
+// Reports routes (optional auth for viewing, auth required for creating)
+app.get('/reports', optionalAuth, reports.getReportsInBoundingBox)
+app.post('/reports', optionalAuth, reports.createReport) // Optional auth allows anonymous reports
+app.get('/reports/:id', optionalAuth, reports.getReport)
+
+// Protected routes (authentication required)
+app.use('/auth/profile', authenticateToken)
+app.get('/auth/profile', users.getProfile)
+app.put('/auth/profile', users.updateProfile)
+
+// Comments routes (auth required)
+app.use('/reports/:id/comments', authenticateToken)
+app.post('/reports/:id/comments', comments.addComment)
+app.get('/reports/:id/comments', comments.getComments)
+
+app.use('/comments/:id', authenticateToken)
+app.put('/comments/:id', comments.updateComment)
+app.delete('/comments/:id', comments.deleteComment)
+
+// Votes routes (auth required)
+app.use('/reports/:id/vote', authenticateToken)
+app.post('/reports/:id/vote', votes.voteOnReport)
+app.get('/reports/:id/votes', votes.getVotes)
+
+app.use('/votes/:id', authenticateToken)
+app.delete('/votes/:id', votes.removeVote)
+
+app.get('/votes/summary', votes.getVotingSummary)
+
+// Admin routes (admin/moderator role required)
+app.use('/users', authenticateToken, requireRole(['admin']))
+app.get('/users', users.getAllUsers)
+app.put('/users/:id/status', users.updateUserStatus)
+
+// Moderator routes (moderator/admin role required)
+app.use('/reports/:id/status', authenticateToken, requireRole(['admin', 'moderator']))
+app.put('/reports/:id/status', reports.updateReportStatus)
+
+// Serve static files
 app.use(express.static('../frontend-web'))
-app.use(express.static('./file_uploads'))
+app.use('/uploads', express.static(uploadPath))
 
-app.listen(listenPort, () => {
-  console.log(`App running on port ${listenPort}.`)
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  })
+})
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' })
+})
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err)
+  res.status(500).json({ error: 'Internal server error' })
+})
+
+// Create server with error handling
+const server = app.listen(listenPort, () => {
+  console.log(`Enhanced Crowdsourced GeoTracker running on port ${listenPort}`)
+  console.log(`- Database: MySQL with enhanced schema`)
+  console.log(`- Authentication: JWT-based`)
+  console.log(`- Rate limiting: ${rateLimitMax} requests per ${rateLimitWindowMs/1000/60} minutes`)
+  console.log(`- File uploads: ${uploadPath}`)
+  console.log(`- Health check: http://localhost:${listenPort}/health`)
+})
+
+// Handle server errors
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${listenPort} is already in use!`)
+    console.log('💡 Try these solutions:')
+    console.log(`   1. Stop any other application using port ${listenPort}`)
+    console.log(`   2. Change the port in settings.js`)
+    console.log(`   3. Kill the process: netstat -ano | findstr :${listenPort}`)
+  } else {
+    console.error('❌ Server error:', error.message)
+  }
+  process.exit(1)
+})
+
+// Handle process termination
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down server...')
+  server.close(() => {
+    console.log('✅ Server stopped')
+    process.exit(0)
+  })
 })

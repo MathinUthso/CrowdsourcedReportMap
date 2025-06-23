@@ -1,15 +1,15 @@
 const settings = {
-  backendUrl: 'http://127.0.0.1:5500',
-  googleMapsAPIKey: 'AIzaSyBj3zTr6cqa2pAlbYBqXYPDBH8E2KV_WL',
+  backendUrl: 'http://127.0.0.1:3000',
+  googleMapsAPIKey: 'AIzaSyB7RNyt5BoXkTyGR4mtuhB_G2fGIKsQoLI',
   mapDefaultLocation: {
-    lat: 50.41311166314775,
-    lng: 30.46506531920826
+    lat: 48.5,
+    lng: 30.0
   },
   mapCenterOnUsersLocationInBounds: {
-    latmin: 44.12810823870789,
-    lngmin: 21.30785244768581,
-    latmax: 51.92494910764881,
-    lngmax: 39.789226501012976
+    latmin: 40.0,
+    lngmin: 15.0,
+    latmax: 60.0,
+    lngmax: 45.0
   },
   title: 'Crowdsourced GeoTracker',
   aboutText: `
