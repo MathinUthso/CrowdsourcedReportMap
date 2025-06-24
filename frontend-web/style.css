@@ -346,10 +346,12 @@ label {
 .report-add-form button:hover {
   background-color: #0056b3;
 }
-
+/* Fix map  */
 #map {
-  height: 100%;
-  margin-top: 60px; /* Account for navbar */
+  position: absolute;
+  top: 56px; /* navbar height */
+  left: 0; right: 0; bottom: 0;
+  z-index: 0;
 }
 
 #about {
@@ -531,5 +533,37 @@ label {
   .gm-style-iw.gm-style-iw-c button.gm-ui-hover-effect img {
     width: 20px;
     height: 20px;
+  }
+}
+
+/* Map Search Box in Navbar */
+#map-search-form {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 1rem;
+}
+#map-search-box {
+  width: 100%;
+  max-width: 350px;
+  padding: 0.4rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+#map-search-box:focus {
+  border-color: #007bff;
+}
+@media only screen and (max-width: 768px) {
+  #map-search-box {
+    max-width: 100%;
+    font-size: 1.5rem;
+    padding: 0.7rem 1.2rem;
+  }
+  #map-search-form {
+    margin: 0 0.2rem;
   }
 }

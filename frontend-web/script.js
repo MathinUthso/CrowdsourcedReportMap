@@ -1,85 +1,4 @@
-<!DOCTYPE html>
-  <html>
-  <head>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-    <script type="text/javascript" src="./settings.js"></script>
-    <script type="text/javascript" src="./map-styles.js"></script>
-    <link rel="icon" type="image/x-icon" href="./res/favicon.png">
-    <link rel="stylesheet" type="text/css" href="./style.css?v=5" />
-    <title>Crowdsourced Map</title>
-    <meta property="og:image" content="./res/crowdsourced-geotracker-preview.png">
-    <meta property="og:url" content="./">
-    <meta name="twitter:card" content="summary_large_image">
-  </head>
-  <body>
-    <!-- Navigation Bar -->
-    <nav id="navbar">
-      <div class="nav-brand">Crowdsourced Map</div>
-      <form id="map-search-form" style="flex:1; display:flex; justify-content:center; align-items:center;" onsubmit="return false;">
-        <input id="map-search-box" type="text" placeholder="Search map..." autocomplete="off" style="width: 100%; max-width: 350px; padding: 0.4rem 1rem; border-radius: 1rem; border: 1px solid #ccc; font-size: 1rem;" />
-      </form>
-      <div class="nav-auth">
-        <span id="user-info" class="hidden">
-          <span id="username-display"></span>
-          <button onclick="logout()" class="nav-btn">Logout</button>
-        </span>
-        <span id="auth-buttons">
-          <button onclick="showLoginModal()" class="nav-btn">Login</button>
-          <button onclick="showSignupModal()" class="nav-btn">Sign Up</button>
-        </span>
-      </div>
-    </nav>
-
-    <!-- Authentication Modals -->
-    <div id="auth-modal" class="modal hidden">
-      <div class="modal-content">
-        <span class="close" onclick="closeAuthModal()">&times;</span>
-        <div id="login-form" class="auth-form">
-          <h2>Login</h2>
-          <form onsubmit="login(event)">
-            <input type="text" id="login-username" placeholder="Username or Email" required>
-            <input type="password" id="login-password" placeholder="Password" required>
-            <button type="submit">Login</button>
-          </form>
-          <p>Don't have an account? <a href="#" onclick="showSignupForm()">Sign up</a></p>
-        </div>
-        <div id="signup-form" class="auth-form hidden">
-          <h2>Sign Up</h2>
-          <form onsubmit="signup(event)">
-            <input type="text" id="signup-username" placeholder="Username" required>
-            <input type="email" id="signup-email" placeholder="Email" required>
-            <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required>
-            <button type="submit">Sign Up</button>
-          </form>
-          <p>Already have an account? <a href="#" onclick="showLoginForm()">Login</a></p>
-        </div>
-      </div>
-    </div>
-
-    <div id="map"></div>
-    <div id="controls">
-      <div class="controls-row">
-        <button onclick="decrementHour(24)">&lang;&lang;&lang; -1 day</button>
-        <div id="controls-date">-</div>
-        <button onclick="incrementHour(24)">+1 day &rang;&rang;&rang;</button>
-      </div>
-      <div class="controls-row">
-        <button onclick="decrementHour(1)">&lang;&lang; -1 hour</button>
-        <div id="controls-hour">-</div>
-        <button onclick="incrementHour(1)">+1 hour &rang;&rang;</button>
-      </div>
-      <div class="controls-row hidden-on-mobile">
-        <button onclick="decrementHour(0.25)">&lang; -15 m.</button>
-        <div id="controls-minute">-</div>
-        <button onclick="incrementHour(0.25)">+15 m. &rang;</button>
-      </div>
-    </div>
-    <div id="stats"></div>
-<<<<<<< HEAD
-
-    <script type             = "text/javascript">
-    const   isMobileDevice   = (screen.width <= 768)
+const   isMobileDevice   = (screen.width <= 768)
     const   isDarkMode       = (isMobileDevice && (moment().format('HH') >= 18 || moment().format('HH') <= 7))
     let     markers          = {}
     let     addReportMarker  = null
@@ -403,46 +322,61 @@
       }
 
       // Adds a new report using the API's POST /reports endpoint
-      function addNewReport() {
-        const form = document.querySelector('.report-add-form');
-        const errorDiv = document.getElementById('report-error');
-        const loadingDiv = document.getElementById('report-loading');
-        const sendBtn = document.getElementById('send-report-btn');
-        errorDiv.style.display = 'none';
-        loadingDiv.style.display = 'block';
-        sendBtn.disabled = true;
+      function addNewReport () {
+        if (!currentUser) {
+          alert('Please login to add reports')
+          return false
+        }
 
-        const formData = new FormData(form);
-        // Convert type name to type_id and update FormData
-        const typeName = form.querySelector('select[name="type"]').value;
-        const typeId = getTypeIdFromName(typeName);
-        formData.delete('type');
-        formData.append('type_id', typeId);
+        const form = document.querySelector('.report-add-form')
+        const formData = new FormData(form)
+        
+        // Add the report data to FormData
+        formData.append('type_id', getTypeIdFromName(formData.get('type')))
+        formData.append('confidence_level', 'medium')
+        
+        // Remove the type field since we're using type_id
+        formData.delete('type')
 
-        // If mediaurl is provided, append it
-        const mediaurl = form.querySelector('input[name="mediaurl"]').value;
-        if (mediaurl) formData.append('mediaurl', mediaurl);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', settings.backendUrl + '/reports');
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState === XMLHttpRequest.DONE) {
-            loadingDiv.style.display = 'none';
-            sendBtn.disabled = false;
-            if (xhr.status === 200) {
+        // Use XMLHttpRequest for file upload
+        const xhr = new XMLHttpRequest()
+        xhr.addEventListener('load', function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const data = JSON.parse(xhr.responseText)
+            if (data.message) {
               if (addReportTooltip) {
-                addReportTooltip.setContent('<h2>Thank you!</h2><div>Your report has been added.</div>');
+                addReportTooltip.setContent('<h2>Thank you!</h2><div>Your report has been added.</div>')
+                setTimeout(() => {
+                  setDisplayedTime(moment().format('X'))
+                  loadReportsFromAPI()
+                }, 3000)
               }
-              loadReportsFromAPI();
             } else {
-              let data = {};
-              try { data = JSON.parse(xhr.responseText); } catch {}
-              errorDiv.textContent = data.error || 'Failed to add report.';
-              errorDiv.style.display = 'block';
+              alert('Failed to add report: ' + (data.error || 'Unknown error'))
+            }
+          } else {
+            console.error('API Error:', xhr.status, xhr.responseText)
+            try {
+              const errorData = JSON.parse(xhr.responseText)
+              alert('Error: ' + (errorData.error || 'Unknown error'))
+            } catch (e) {
+              alert('Error: Server returned status ' + xhr.status)
             }
           }
-        };
-        xhr.send(formData);
+        })
+        
+        xhr.addEventListener('error', function() {
+          console.error('Network error occurred')
+          alert('Network error: Unable to connect to server')
+        })
+        
+        xhr.open('POST', settings.backendUrl + '/reports')
+        if (authToken) {
+          xhr.setRequestHeader('Authorization', 'Bearer ' + authToken)
+        }
+        xhr.send(formData)
+        
+        return false
       }
 
       function getTypeIdFromName(typeName) {
@@ -518,7 +452,6 @@
                   let content                          = ''
                   if  (loc.title) content             += '<div class="marker-tt-title"><h3>' + loc.title + '</h3></div>'
                   if  (loc.description) content       += '<div class="marker-tt-description">' + loc.description + '</div>'
-                  if  (loc.confidence_level) content  += '<div class="marker-tt-confidence">Confidence level: <b>' + loc.confidence_level.charAt(0).toUpperCase() + loc.confidence_level.slice(1) + '</b></div>'
                   if  (loc.type_name) content         += '<div class="marker-tt-type">Reported as <i>' + loc.type_name + '</i></div>'
                   if  (loc.lat && loc.lon) content    += '<div class="marker-tt-location">' + loc.lat + ', ' + loc.lon + '</div>'
                   if  (loc.valid_from) content        += '<div class="marker-tt-valid-from">' + moment(loc.valid_from).format(moment(loc.valid_from).format('HH:mm') === '00:00' ? 'D. MMM. YYYY' : 'D. MMM. YYYY HH:mm') + '</div>'
@@ -543,9 +476,8 @@
                   }
 
                   // media: uploaded photos
-                  if (loc.media_url && loc.media_url.includes('file_uploads/')) {
-                    const filename = loc.media_url.split('file_uploads/').pop();
-                    content += '<a class="marker-tt-photo" href="' + settings.backendUrl + '/uploads/' + filename + '" target="_blank"><img src="' + settings.backendUrl + '/uploads/' + filename + '" /></a>';
+                  if (loc.media_url && loc.media_url.includes('./file_uploads/')) {
+                    content += '<a class="marker-tt-photo" href="' + settings.backendUrl + loc.media_url.replace('./file_uploads/', '/') + '" target="_blank"><img src="' + settings.backendUrl + loc.media_url.replace('./file_uploads/', '/') + '" /></a>'
                   }
 
                   // media: telegram posts
@@ -585,7 +517,7 @@
       function init () {
         // create the map
         map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 5,
+          zoom: 13,
           center: settings.mapDefaultLocation,
           mapTypeId: 'roadmap',
           controlSize: isMobileDevice ? 80 : undefined,
@@ -597,6 +529,26 @@
           fullscreenControl: false,
           streetViewControl: false
         })
+
+        // Add Google Maps Places Autocomplete to the search box
+        var input = document.getElementById('map-search-box');
+        if (input && google.maps.places) {
+          var autocomplete = new google.maps.places.Autocomplete(input);
+          autocomplete.bindTo('bounds', map);
+          autocomplete.addListener('place_changed', function() {
+            var place = autocomplete.getPlace();
+            if (!place.geometry) {
+              alert("No details available for input: '" + place.name + "'");
+              return;
+            }
+            if (place.geometry.viewport) {
+              map.fitBounds(place.geometry.viewport);
+            } else {
+              map.setCenter(place.geometry.location);
+              map.setZoom(15);
+            }
+          });
+        }
 
         // try to center the map on current location
         if (navigator.geolocation) {
@@ -653,33 +605,27 @@
 
           // prepare the tooltip content
           let content = '<h2>Adding a report:</h2>'
-          content += '<form class="report-add-form" onsubmit="event.preventDefault(); addNewReport();">'
+          content += '<form class="report-add-form">'
           content += '<input type="hidden" name="lat" value="' + e.latLng.lat() + '" />'
           content += '<input type="hidden" name="lon" value="' + e.latLng.lng() + '" />'
-          content += '<label>Title:<br>'
-          content += '<input type="text" name="title" placeholder="Brief title" required style="width:100%;margin-bottom:8px;"></input>'
+          content += '<label>Title: '
+          content += '<input type="text" name="title" placeholder="Brief title" required></input>'
           content += '</label>'
-          content += '<label>What you see:<br>'
-          content += '<select name="type" class="report-add-type" style="width:100%;margin-bottom:8px;">'
+          content += '<label>What you see: '
+          content += '<select name="type" class="report-add-type">'
           if (projectMetadata.reportTypes) projectMetadata.reportTypes.forEach(t => {
             content += '<option value="' + t.name + '">' + t.name + '</option>'
           })
           content += '</select>'
           content += '</label>'
-          content += '<label>Description (optional):<br>'
-          content += '<input type="text" name="description" placeholder="Additional details" style="width:100%;margin-bottom:8px;"></input>'
+          content += '<label>Description (optional): '
+          content += '<input type="text" name="description" placeholder="Additional details"></input>'
           content += '</label>'
-          content += '<label>Photo (optional):<br>'
-          content += '<input type="file" name="mediafile" accept="image/*" style="margin-top: 5px; margin-bottom: 8px; width:100%;" onchange="previewImage(this)"></input>'
-          content += '<div id="image-preview" style="margin-bottom:8px;"></div>'
+          content += '<label>Photo (optional): '
+          content += '<input type="file" name="mediafile" accept="image/*" style="margin-top: 5px;" onchange="validateFileSize(this)"></input>'
           content += '<small style="color: #666; font-size: 0.8rem;">Max 10MB (JPG, PNG, WebP)</small>'
           content += '</label>'
-          content += '<label>External Media Link (optional):<br>'
-          content += '<input type="url" name="mediaurl" placeholder="Paste Twitter, Telegram, or YouTube link" style="width:100%;margin-bottom:8px;"></input>'
-          content += '</label>'
-          content += '<div id="report-error" style="color:red; font-size:0.9rem; margin-bottom:8px; display:none;"></div>'
-          content += '<button type="submit" id="send-report-btn" style="width:100%;">Send Report</button>'
-          content += '<div id="report-loading" style="display:none; text-align:center; margin-top:8px;">Sending...</div>'
+          content += '<button type="button" onclick="addNewReport()">Send Report</button>'
           content += '</form>'
 
           // close other tooltips before opening this one
@@ -716,7 +662,7 @@
 
       // load Google Maps
       var script = document.createElement('script')
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init'
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init&libraries=places';
       script.async = true
       document.head.appendChild(script)
 
@@ -730,22 +676,4 @@
       } else {
         if (aboutEl) aboutEl.remove()
       }
-
-      // Add these helper functions in the <script> section:
-      function previewImage(input) {
-        const preview = document.getElementById('image-preview');
-        preview.innerHTML = '';
-        if (input.files && input.files[0]) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:120px;border-radius:6px;box-shadow:0 1px 4px #aaa;" />';
-          }
-          reader.readAsDataURL(input.files[0]);
-        }
-      }
-    </script>
-=======
-    <script type="text/javascript" src="./script.js"></script>
->>>>>>> e8d7f7dac45ebc067079da9cf8e9efc0f34f1381
-  </body>
-</html>
+        

@@ -2,8 +2,8 @@ const settings = {
   backendUrl: 'http://127.0.0.1:3000',
   googleMapsAPIKey: 'AIzaSyB7RNyt5BoXkTyGR4mtuhB_G2fGIKsQoLI',
   mapDefaultLocation: {
-    lat: 48.5,
-    lng: 30.0
+    lat: 23.8103,
+    lng: 90.4125
   },
   mapCenterOnUsersLocationInBounds: {
     latmin: 40.0,
