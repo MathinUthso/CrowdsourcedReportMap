@@ -55,10 +55,6 @@
     </div>
 
     <div id="map"></div>
-<<<<<<< HEAD
-=======
-    
->>>>>>> 439293abcc4bf66a657cb59b558835404f84d881
     <div id="controls">
       <div class="controls-row">
         <button onclick="decrementHour(24)">&lang;&lang;&lang; -1 day</button>
@@ -403,61 +399,46 @@
       }
 
       // Adds a new report using the API's POST /reports endpoint
-      function addNewReport () {
-        if (!currentUser) {
-          alert('Please login to add reports')
-          return false
-        }
+      function addNewReport() {
+        const form = document.querySelector('.report-add-form');
+        const errorDiv = document.getElementById('report-error');
+        const loadingDiv = document.getElementById('report-loading');
+        const sendBtn = document.getElementById('send-report-btn');
+        errorDiv.style.display = 'none';
+        loadingDiv.style.display = 'block';
+        sendBtn.disabled = true;
 
-        const form = document.querySelector('.report-add-form')
-        const formData = new FormData(form)
-        
-        // Add the report data to FormData
-        formData.append('type_id', getTypeIdFromName(formData.get('type')))
-        formData.append('confidence_level', 'medium')
-        
-        // Remove the type field since we're using type_id
-        formData.delete('type')
+        const formData = new FormData(form);
+        // Convert type name to type_id and update FormData
+        const typeName = form.querySelector('select[name="type"]').value;
+        const typeId = getTypeIdFromName(typeName);
+        formData.delete('type');
+        formData.append('type_id', typeId);
 
-        // Use XMLHttpRequest for file upload
-        const xhr = new XMLHttpRequest()
-        xhr.addEventListener('load', function() {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            const data = JSON.parse(xhr.responseText)
-            if (data.message) {
+        // If mediaurl is provided, append it
+        const mediaurl = form.querySelector('input[name="mediaurl"]').value;
+        if (mediaurl) formData.append('mediaurl', mediaurl);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', settings.backendUrl + '/reports');
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            loadingDiv.style.display = 'none';
+            sendBtn.disabled = false;
+            if (xhr.status === 200) {
               if (addReportTooltip) {
-                addReportTooltip.setContent('<h2>Thank you!</h2><div>Your report has been added.</div>')
-                setTimeout(() => {
-                  setDisplayedTime(moment().format('X'))
-                  loadReportsFromAPI()
-                }, 3000)
+                addReportTooltip.setContent('<h2>Thank you!</h2><div>Your report has been added.</div>');
               }
+              loadReportsFromAPI();
             } else {
-              alert('Failed to add report: ' + (data.error || 'Unknown error'))
-            }
-          } else {
-            console.error('API Error:', xhr.status, xhr.responseText)
-            try {
-              const errorData = JSON.parse(xhr.responseText)
-              alert('Error: ' + (errorData.error || 'Unknown error'))
-            } catch (e) {
-              alert('Error: Server returned status ' + xhr.status)
+              let data = {};
+              try { data = JSON.parse(xhr.responseText); } catch {}
+              errorDiv.textContent = data.error || 'Failed to add report.';
+              errorDiv.style.display = 'block';
             }
           }
-        })
-        
-        xhr.addEventListener('error', function() {
-          console.error('Network error occurred')
-          alert('Network error: Unable to connect to server')
-        })
-        
-        xhr.open('POST', settings.backendUrl + '/reports')
-        if (authToken) {
-          xhr.setRequestHeader('Authorization', 'Bearer ' + authToken)
-        }
-        xhr.send(formData)
-        
-        return false
+        };
+        xhr.send(formData);
       }
 
       function getTypeIdFromName(typeName) {
@@ -533,6 +514,7 @@
                   let content                          = ''
                   if  (loc.title) content             += '<div class="marker-tt-title"><h3>' + loc.title + '</h3></div>'
                   if  (loc.description) content       += '<div class="marker-tt-description">' + loc.description + '</div>'
+                  if  (loc.confidence_level) content  += '<div class="marker-tt-confidence">Confidence level: <b>' + loc.confidence_level.charAt(0).toUpperCase() + loc.confidence_level.slice(1) + '</b></div>'
                   if  (loc.type_name) content         += '<div class="marker-tt-type">Reported as <i>' + loc.type_name + '</i></div>'
                   if  (loc.lat && loc.lon) content    += '<div class="marker-tt-location">' + loc.lat + ', ' + loc.lon + '</div>'
                   if  (loc.valid_from) content        += '<div class="marker-tt-valid-from">' + moment(loc.valid_from).format(moment(loc.valid_from).format('HH:mm') === '00:00' ? 'D. MMM. YYYY' : 'D. MMM. YYYY HH:mm') + '</div>'
@@ -557,8 +539,9 @@
                   }
 
                   // media: uploaded photos
-                  if (loc.media_url && loc.media_url.includes('./file_uploads/')) {
-                    content += '<a class="marker-tt-photo" href="' + settings.backendUrl + loc.media_url.replace('./file_uploads/', '/') + '" target="_blank"><img src="' + settings.backendUrl + loc.media_url.replace('./file_uploads/', '/') + '" /></a>'
+                  if (loc.media_url && loc.media_url.includes('file_uploads/')) {
+                    const filename = loc.media_url.split('file_uploads/').pop();
+                    content += '<a class="marker-tt-photo" href="' + settings.backendUrl + '/uploads/' + filename + '" target="_blank"><img src="' + settings.backendUrl + '/uploads/' + filename + '" /></a>';
                   }
 
                   // media: telegram posts
@@ -666,27 +649,33 @@
 
           // prepare the tooltip content
           let content = '<h2>Adding a report:</h2>'
-          content += '<form class="report-add-form">'
+          content += '<form class="report-add-form" onsubmit="event.preventDefault(); addNewReport();">'
           content += '<input type="hidden" name="lat" value="' + e.latLng.lat() + '" />'
           content += '<input type="hidden" name="lon" value="' + e.latLng.lng() + '" />'
-          content += '<label>Title: '
-          content += '<input type="text" name="title" placeholder="Brief title" required></input>'
+          content += '<label>Title:<br>'
+          content += '<input type="text" name="title" placeholder="Brief title" required style="width:100%;margin-bottom:8px;"></input>'
           content += '</label>'
-          content += '<label>What you see: '
-          content += '<select name="type" class="report-add-type">'
+          content += '<label>What you see:<br>'
+          content += '<select name="type" class="report-add-type" style="width:100%;margin-bottom:8px;">'
           if (projectMetadata.reportTypes) projectMetadata.reportTypes.forEach(t => {
             content += '<option value="' + t.name + '">' + t.name + '</option>'
           })
           content += '</select>'
           content += '</label>'
-          content += '<label>Description (optional): '
-          content += '<input type="text" name="description" placeholder="Additional details"></input>'
+          content += '<label>Description (optional):<br>'
+          content += '<input type="text" name="description" placeholder="Additional details" style="width:100%;margin-bottom:8px;"></input>'
           content += '</label>'
-          content += '<label>Photo (optional): '
-          content += '<input type="file" name="mediafile" accept="image/*" style="margin-top: 5px;" onchange="validateFileSize(this)"></input>'
+          content += '<label>Photo (optional):<br>'
+          content += '<input type="file" name="mediafile" accept="image/*" style="margin-top: 5px; margin-bottom: 8px; width:100%;" onchange="previewImage(this)"></input>'
+          content += '<div id="image-preview" style="margin-bottom:8px;"></div>'
           content += '<small style="color: #666; font-size: 0.8rem;">Max 10MB (JPG, PNG, WebP)</small>'
           content += '</label>'
-          content += '<button type="button" onclick="addNewReport()">Send Report</button>'
+          content += '<label>External Media Link (optional):<br>'
+          content += '<input type="url" name="mediaurl" placeholder="Paste Twitter, Telegram, or YouTube link" style="width:100%;margin-bottom:8px;"></input>'
+          content += '</label>'
+          content += '<div id="report-error" style="color:red; font-size:0.9rem; margin-bottom:8px; display:none;"></div>'
+          content += '<button type="submit" id="send-report-btn" style="width:100%;">Send Report</button>'
+          content += '<div id="report-loading" style="display:none; text-align:center; margin-top:8px;">Sending...</div>'
           content += '</form>'
 
           // close other tooltips before opening this one
@@ -736,6 +725,19 @@
         if (aboutEl) aboutEl.innerHTML = settings.aboutText
       } else {
         if (aboutEl) aboutEl.remove()
+      }
+
+      // Add these helper functions in the <script> section:
+      function previewImage(input) {
+        const preview = document.getElementById('image-preview');
+        preview.innerHTML = '';
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:120px;border-radius:6px;box-shadow:0 1px 4px #aaa;" />';
+          }
+          reader.readAsDataURL(input.files[0]);
+        }
       }
     </script>
   </body>

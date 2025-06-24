@@ -59,6 +59,7 @@ const getReportsInBoundingBox = async (request, response) => {
     let columns = `
       r.id, ST_Y(r.coordinates) AS lat, ST_X(r.coordinates) as lon, 
       r.title, r.description, r.valid_from, r.valid_until, r.status, r.confidence_level,
+      r.media_url, r.source_url,
       rt.name as type_name, rt.color as type_color,
       u.username as reporter_username,
       COUNT(DISTINCT rv.id) as vote_count,
@@ -121,7 +122,9 @@ const createReport = async (request, response) => {
   try {
     const userId = request.user ? request.user.id : null
     const requestIP = request.ip
+    // Accept mediaurl from either body or files (for form-data)
     const { lat, lon, type_id, location_id, title, description, validfrom, validuntil, confidence_level, source_url } = request.body
+    let mediaurl = request.body.mediaurl || null
 
     // check the user input
     if (!lon || lon.toString() !== parseFloat(lon).toString()) throw new Error('Incorrect input: lon (supported: float)')
@@ -182,6 +185,12 @@ const createReport = async (request, response) => {
       }
     }
 
+    // If no file uploaded, but mediaurl is provided, store it in source_url
+    let sourceUrlSQL = source_url || null
+    if (!mediaUrlSQL && mediaurl) {
+      sourceUrlSQL = mediaurl
+    }
+
     // prepare the INSERT query
     const query = `
       INSERT INTO reports (user_id, type_id, location_id, coordinates, title, description, valid_from, valid_until, confidence_level, status, media_url, source_url, ip_address)
@@ -214,7 +223,7 @@ const createReport = async (request, response) => {
       confidence_level || 'medium',
       'pending',
       mediaUrlSQL,
-      source_url || null,
+      sourceUrlSQL,
       requestIP
     ])
 
