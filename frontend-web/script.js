@@ -1,14 +1,14 @@
-const   isMobileDevice   = (screen.width <= 768)
-    const   isDarkMode       = (isMobileDevice && (moment().format('HH') >= 18 || moment().format('HH') <= 7))
-    let     markers          = {}
-    let     addReportMarker  = null
-    let     addReportTooltip = null
-    let     dbRequestTimeout = null
-    let     projectMetadata  = {}
-    let     map              = null
-    let     displayedTime    = parseInt(moment().format('X'))
-    let     currentUser      = null
-    let     authToken        = localStorage.getItem('authToken')
+const isMobileDevice   = (screen.width <= 768)
+const isDarkMode       = (isMobileDevice && (moment().format('HH') >= 18 || moment().format('HH') <= 7))
+let   markers          = {}
+let   addReportMarker  = null
+let   addReportTooltip = null
+let   dbRequestTimeout = null
+let   projectMetadata  = {}
+let   map              = null
+let   displayedTime    = parseInt(moment().format('X'))
+let   currentUser      = null
+let   authToken        = localStorage.getItem('authToken')
 
       // Authentication Functions
       function showLoginModal() {
@@ -517,7 +517,7 @@ const   isMobileDevice   = (screen.width <= 768)
       function init () {
         // create the map
         map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 5,
+          zoom: 13,
           center: settings.mapDefaultLocation,
           mapTypeId: 'roadmap',
           controlSize: isMobileDevice ? 80 : undefined,
@@ -529,6 +529,26 @@ const   isMobileDevice   = (screen.width <= 768)
           fullscreenControl: false,
           streetViewControl: false
         })
+
+        // Add Google Maps Places Autocomplete to the search box
+        var input = document.getElementById('map-search-box');
+        if (input && google.maps.places) {
+          var autocomplete = new google.maps.places.Autocomplete(input);
+          autocomplete.bindTo('bounds', map);
+          autocomplete.addListener('place_changed', function() {
+            var place = autocomplete.getPlace();
+            if (!place.geometry) {
+              alert("No details available for input: '" + place.name + "'");
+              return;
+            }
+            if (place.geometry.viewport) {
+              map.fitBounds(place.geometry.viewport);
+            } else {
+              map.setCenter(place.geometry.location);
+              map.setZoom(15);
+            }
+          });
+        }
 
         // try to center the map on current location
         if (navigator.geolocation) {
@@ -642,7 +662,7 @@ const   isMobileDevice   = (screen.width <= 768)
 
       // load Google Maps
       var script = document.createElement('script')
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init'
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init&libraries=places';
       script.async = true
       document.head.appendChild(script)
 
