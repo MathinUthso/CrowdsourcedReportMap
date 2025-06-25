@@ -6,7 +6,7 @@ module.exports = {
   dbPort: 3306,
   dbHost: '127.0.0.1',
   listenPort: 3000,
-  supportedTypes: ['INFANTRY', 'VEHICLES', 'AIRCRAFT'],
+  supportedTypes: ['Anodolon', 'Construction', 'Blockade',],
   maximumImageUploadSizeMB: 10,
   skipImageProcessing: false,
   
