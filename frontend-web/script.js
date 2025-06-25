@@ -676,3 +676,17 @@ let   authToken        = localStorage.getItem('authToken')
       } else {
         if (aboutEl) aboutEl.remove()
       }
+
+      // Add these helper functions in the <script> section:
+      function previewImage(input) {
+        const preview = document.getElementById('image-preview');
+        preview.innerHTML = '';
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:120px;border-radius:6px;box-shadow:0 1px 4px #aaa;" />';
+          }
+          reader.readAsDataURL(input.files[0]);
+        }
+      }
+
