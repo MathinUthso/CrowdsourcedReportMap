@@ -1,9 +1,16 @@
 module.exports = {
                                    // Database Configuration - Update these with your actual MySQL credentials
+<<<<<<< HEAD
   dbUser     : 'root'  ,            // Change to your MySQL username
   dbName     : 'crowdsourced_map',  // Fixed to match schema
   dbPassword : '' ,                  // Change to your MySQL password
   dbPort     : 3306,
+=======
+  dbUser     : 'root',              // Change to your MySQL username
+  dbName     : 'crowdsourced_map',  // Fixed to match schema
+  dbPassword : '',                  // Change to your MySQL password
+  dbPort                  : 3306,
+>>>>>>> f84c41be0576ed2ae16b72cbdaf9d9436bdec3be
   dbHost                  : '127.0.0.1',
   listenPort              : 3000,
   supportedTypes          : ['Anodolon', 'Construction', 'Blockade'],
