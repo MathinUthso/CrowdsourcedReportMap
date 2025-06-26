@@ -23,6 +23,7 @@
       <div class="nav-auth">
         <span id="user-info" class="hidden">
           <span id="username-display"></span>
+          <button id="my-reports-btn" class="nav-btn">My Reports</button>
           <button onclick="logout()" class="nav-btn">Logout</button>
         </span>
         <span id="auth-buttons">
@@ -31,6 +32,8 @@
         </span>
       </div>
     </nav>
+
+    <div id="my-reports-dropdown" style="display:none;position:absolute;z-index:2000;top:60px;min-width:260px;max-width:420px;right:20px;"></div>
 
     <!-- Authentication Modals -->
     <div id="auth-modal" class="modal hidden">
@@ -60,6 +63,12 @@
 
     <div id="map"></div>
     <button id="current-location-btn" class="icon-btn" title="Go to my location" style="position:absolute; right:1rem; top:160px; z-index:1001;"><img src="./res/user.svg" alt="My Location" style="width:28px;height:28px;"></button>
+    <button id="time-filter-btn" class="icon-btn" title="Toggle Time Filter" style="position:absolute; right:0.8rem; top:194px; z-index:1001;">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
+        <circle cx="12" cy="12" r="10" stroke="#222" stroke-width="2"/>
+        <polyline points="12,6 12,12 16,14" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <div id="controls">
       <div class="controls-row">
         <button onclick="decrementHour(24)">&lang;&lang;&lang; -1 day</button>
@@ -77,9 +86,21 @@
         <button onclick="incrementHour(0.25)">+15 m. &rang;</button>
       </div>
     </div>
-    <div id = "stats"></div>
+    <div id="filter-bar-container" style="position:relative;top:100px;left:16px;z-index:1100;width:auto;">
+      <button id="toggle-stats-btn" style="font-size:1.05em; border-radius:0.4em; background:#fff; color:#222; border:1px solid #e5e7eb; box-shadow:0 1px 4px #0001; font-family:'Segoe UI', 'Arial', sans-serif; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:0.5em;">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;"><path d="M3 5h14M6 10h8M9 15h2" stroke="#222" stroke-width="2" stroke-linecap="round"/></svg>
+        Filter
+      </button>
+      <div id="stats-container" style="display:none;">
+        <div id="stats"></div>
+      </div>
+    </div>
+
+    <div id="my-reports-message" style="margin-bottom:1em;color:#c00;font-size:1.05em;"></div>
+    <div id="my-reports-list"></div>
 
     <script type="text/javascript" src="./script.js"></script>
-    
+    <script type="text/javascript" src="./my-reports-dropdown.js"></script>
+    <div id="edit-report-modal" class="modal hidden"><div class="modal-content" id="edit-report-modal-content"></div></div>
   </body>
 </html>
