@@ -348,9 +348,55 @@ let     authToken        = localStorage.getItem('authToken')
       if (xhr.readyState === XMLHttpRequest.DONE) {
         loadingDiv.style.display = 'none';
         sendBtn.disabled = false;
-        if (xhr.status === 200) {
+        if (xhr.status === 200 || xhr.status === 201) {
+          let reportId = null;
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            reportId = resp.report_id;
+          } catch {}
           if (addReportTooltip) {
             addReportTooltip.setContent('<h2>Thank you!</h2><div>Your report has been added.</div>');
+          }
+          // Immediately add the marker for the new report
+          if (reportId && map) {
+            const lat = parseFloat(form.querySelector('input[name="lat"]').value);
+            const lon = parseFloat(form.querySelector('input[name="lon"]').value);
+            const typeName = form.querySelector('select[name="type"]').value;
+            const title = form.querySelector('input[name="title"]').value;
+            const description = form.querySelector('input[name="description"]').value;
+            const marker = new google.maps.Marker({
+              position: { lat, lng: lon },
+              label: {
+                text: typeName ? typeName.toUpperCase()[0] : 'R',
+                color: 'white'
+              },
+              title: typeName || 'REPORT',
+              map: map,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                strokeColor: getMarkerColorFromType(typeName),
+                fillColor: getMarkerColorFromType(typeName),
+                strokeWeight: 2,
+                fillOpacity: 1,
+                strokeOpacity: 1,
+                scale: isMobileDevice ? 30 : 9
+              }
+            });
+            marker.addListener('click', function () {
+              let content = '<div style="min-width:220px;max-width:320px;padding:1rem 1.2rem 1rem 1.2rem;border-radius:12px;box-shadow:0 2px 16px #0002;background:#fff;font-family:sans-serif;">';
+              if (title) content += '<div style="font-size:1.15rem;font-weight:600;margin-bottom:0.3rem;line-height:1.2;">' + title + '</div>';
+              content += '<div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:0.5rem;">';
+              if (typeName) content += '<span style="font-size:0.98rem;background:#f3f6fa;padding:0.18em 0.7em;border-radius:1em;font-weight:500;">' + typeName + '</span>';
+              content += '</div>';
+              if (description) content += '<div style="font-size:0.97rem;color:#444;margin-bottom:0.2rem;">' + description + '</div>';
+              content += '</div>';
+              if (addReportTooltip) addReportTooltip.close();
+              const infoWindow = new google.maps.InfoWindow({ content });
+              infoWindow.open({ anchor: marker, map, shouldFocus: false });
+            });
+            marker.addListener('click', function () { marker.infoWindow && marker.infoWindow.close(); });
+            // Optionally, open the info window immediately
+            google.maps.event.trigger(marker, 'click');
           }
           loadReportsFromAPI();
         } else {
