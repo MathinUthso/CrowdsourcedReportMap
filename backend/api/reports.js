@@ -72,11 +72,18 @@ const getReportsInBoundingBox = async (request, response) => {
     if (!request.query.lonmax || request.query.lonmax.toString() !== parseFloat(request.query.lonmax).toString()) throw new Error('Incorrect input: lonmax (supported: float)')
     if (!request.query.time || request.query.time.toString() !== parseInt(request.query.time).toString()) throw new Error('Incorrect input: time (supported: integer)')
 
-    let whereClause = `
-      WHERE ST_Contains(ST_GeomFromText('POLYGON((${request.query.lonmin} ${request.query.latmin}, ${request.query.lonmax} ${request.query.latmin}, ${request.query.lonmax} ${request.query.latmax}, ${request.query.lonmin} ${request.query.latmax}, ${request.query.lonmin} ${request.query.latmin}))', 4326), r.coordinates)
-      AND r.valid_from <= FROM_UNIXTIME(${request.query.time})
-      AND r.valid_until >= FROM_UNIXTIME(${request.query.time})
-    `
+    let whereClause = '';
+    if (request.query.show_all === '1') {
+      whereClause = `
+        WHERE ST_Contains(ST_GeomFromText('POLYGON((${request.query.lonmin} ${request.query.latmin}, ${request.query.lonmax} ${request.query.latmin}, ${request.query.lonmax} ${request.query.latmax}, ${request.query.lonmin} ${request.query.latmax}, ${request.query.lonmin} ${request.query.latmin}))', 4326), r.coordinates)
+      `;
+    } else {
+      whereClause = `
+        WHERE ST_Contains(ST_GeomFromText('POLYGON((${request.query.lonmin} ${request.query.latmin}, ${request.query.lonmax} ${request.query.latmin}, ${request.query.lonmax} ${request.query.latmax}, ${request.query.lonmin} ${request.query.latmax}, ${request.query.lonmin} ${request.query.latmin}))', 4326), r.coordinates)
+        AND r.valid_from <= FROM_UNIXTIME(${request.query.time})
+        AND r.valid_until >= FROM_UNIXTIME(${request.query.time})
+      `;
+    }
 
     // Add status filter if provided
     if (request.query.status) {
@@ -344,9 +351,116 @@ const updateReportStatus = async (request, response) => {
   }
 }
 
+// GET /my-reports - Get all reports created by the current user
+const getMyReports = async (request, response) => {
+  try {
+    const userId = request.user && request.user.id;
+    if (!userId) return response.status(401).json({ error: 'Unauthorized' });
+    const query = `
+      SELECT 
+        r.id, ST_Y(r.coordinates) AS lat, ST_X(r.coordinates) as lon, 
+        r.title, r.description, r.valid_from, r.valid_until, r.status, r.confidence_level,
+        r.media_url, r.source_url,
+        rt.name as type_name, rt.color as type_color,
+        r.created_at, r.updated_at
+      FROM reports r
+      LEFT JOIN report_types rt ON r.type_id = rt.id
+      WHERE r.user_id = ?
+      ORDER BY r.created_at DESC
+    `;
+    const [results] = await pool.execute(query, [userId]);
+    response.status(200).json(results);
+  } catch (error) {
+    console.error('Database error:', error);
+    response.status(500).json({ error: 'Database error' });
+  }
+};
+
+// DELETE /reports/:id - Delete a report by ID (only if owner)
+const deleteReport = async (request, response) => {
+  try {
+    const userId = request.user && request.user.id;
+    if (!userId) return response.status(401).json({ error: 'Unauthorized' });
+    const { id } = request.params;
+    // Check ownership
+    const [reports] = await pool.execute('SELECT * FROM reports WHERE id = ?', [id]);
+    if (reports.length === 0) return response.status(404).json({ error: 'Report not found' });
+    if (reports[0].user_id !== userId) return response.status(403).json({ error: 'Forbidden: Not your report' });
+    // Delete report
+    await pool.execute('DELETE FROM reports WHERE id = ?', [id]);
+    await logAudit(userId, 'DELETE', 'reports', id, reports[0], null, request.ip);
+    response.json({ message: 'Report deleted successfully' });
+  } catch (error) {
+    console.error('Delete report error:', error);
+    response.status(500).json({ error: 'Database error' });
+  }
+};
+
+// PUT /reports/:id - Edit a report (only if owner)
+const editReport = async (request, response) => {
+  try {
+    const userId = request.user && request.user.id;
+    if (!userId) return response.status(401).json({ error: 'Unauthorized' });
+    const { id } = request.params;
+    const { title, description, type_id, confidence_level } = request.body;
+    // Check ownership
+    const [reports] = await pool.execute('SELECT * FROM reports WHERE id = ?', [id]);
+    if (reports.length === 0) return response.status(404).json({ error: 'Report not found' });
+    if (reports[0].user_id !== userId) return response.status(403).json({ error: 'Forbidden: Not your report' });
+    let newMediaUrl = reports[0].media_url;
+    // If a new image is uploaded, process it
+    if (request.files && request.files.mediafile && request.files.mediafile.size && request.files.mediafile.size <= (1024000 * maximumImageUploadSizeMB)) {
+      const randomFileNameBeforeProcessing = '___' + getRandomFilename();
+      const randomFileNameFinal = getRandomFilename();
+      if (skipImageProcessing) {
+        await request.files.mediafile.mv(uploadPath + '/' + randomFileNameFinal);
+        newMediaUrl = uploadPath + '/' + randomFileNameFinal;
+      } else {
+        await request.files.mediafile.mv(uploadPath + '/' + randomFileNameBeforeProcessing);
+        let fileIsValid = true;
+        // process the image using 'sharp' library
+        const f = await sharp(uploadPath + '/' + randomFileNameBeforeProcessing);
+        // check format, resize, convert to PNG, save using 'sharp' library
+        try {
+          const meta = await f.metadata();
+          if (!['jpeg', 'png', 'webp'].includes(meta.format)) fileIsValid = false;
+        } catch (e) {
+          fileIsValid = false;
+        }
+        if (fileIsValid) {
+          await f.resize(1000, 1000, { fit: sharp.fit.inside, withoutEnlargement: true })
+            .toFormat('png')
+            .toFile(uploadPath + '/' + randomFileNameFinal);
+          newMediaUrl = uploadPath + '/' + randomFileNameFinal;
+        }
+        // delete temporary file
+        fs.unlink(uploadPath + '/' + randomFileNameBeforeProcessing, () => {});
+      }
+      // Optionally, delete the old image file if it exists and is not null
+      if (reports[0].media_url && fs.existsSync(reports[0].media_url)) {
+        fs.unlink(reports[0].media_url, () => {});
+      }
+    }
+    // Update report
+    const oldValues = { ...reports[0] };
+    await pool.execute(
+      'UPDATE reports SET title = ?, description = ?, type_id = ?, confidence_level = ?, media_url = ?, updated_at = NOW() WHERE id = ?',
+      [title || null, description || null, type_id || reports[0].type_id, confidence_level || reports[0].confidence_level, newMediaUrl, id]
+    );
+    await logAudit(userId, 'UPDATE', 'reports', id, oldValues, { title, description, type_id, confidence_level, media_url: newMediaUrl }, request.ip);
+    response.json({ message: 'Report updated successfully' });
+  } catch (error) {
+    console.error('Edit report error:', error);
+    response.status(500).json({ error: 'Database error' });
+  }
+};
+
 module.exports = {
   getReportsInBoundingBox,
   createReport,
   getReport,
-  updateReportStatus
+  updateReportStatus,
+  getMyReports,
+  deleteReport,
+  editReport
 }
