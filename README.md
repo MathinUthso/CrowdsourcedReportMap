@@ -1,4 +1,4 @@
-# Dhaka
+# Dhaka Alert
 
 A real-time, crowdsourced mapping application for tracking ongoing movements and activities around Dhaka. Built with Node.js, MySQL, and Google Maps API.
 
