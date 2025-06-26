@@ -70,7 +70,7 @@ app.get('/metadata/locations', metadata.getLocations)
 
 // Reports routes (optional auth for viewing, auth required for creating)
 app.get('/reports', optionalAuth, reports.getReportsInBoundingBox)
-app.post('/reports', optionalAuth, reports.createReport) // Optional auth allows anonymous reports
+app.post('/reports', authenticateToken, reports.createReport)
 app.get('/reports/:id', optionalAuth, reports.getReport)
 
 // Protected routes (authentication required)
@@ -105,6 +105,13 @@ app.put('/users/:id/status', users.updateUserStatus)
 // Moderator routes (moderator/admin role required)
 app.use('/reports/:id/status', authenticateToken, requireRole(['admin', 'moderator']))
 app.put('/reports/:id/status', reports.updateReportStatus)
+
+// User's own reports management (auth required)
+app.use('/my-reports', authenticateToken)
+app.get('/my-reports', reports.getMyReports)
+app.use('/reports/:id', authenticateToken)
+app.delete('/reports/:id', reports.deleteReport)
+app.put('/reports/:id', reports.editReport)
 
 // Serve static files
 app.use('/uploads', express.static(uploadPath))
