@@ -431,7 +431,7 @@ let     authToken        = localStorage.getItem('authToken')
                 strokeOpacity: (reportAgeMinutes <= 60) ? 1 : 0.45,
                 scale: isMobileDevice ? 30 : 9
               }
-            })
+            });
             markers[loc.id].markerObject.addListener('click', function (p) {
               // Modern, minimal info window content
               let content = '<div style="min-width:220px;max-width:320px;padding:1rem 1.2rem 1rem 1.2rem;border-radius:12px;box-shadow:0 2px 16px #0002;background:#fff;font-family:sans-serif;">';
@@ -469,13 +469,14 @@ let     authToken        = localStorage.getItem('authToken')
       center: settings.mapDefaultLocation,
       mapTypeId: 'roadmap',
       controlSize: isMobileDevice ? 80 : undefined,
-      styles: isDarkMode ? stylesNightMode : undefined,
+      styles: stylesNightMode,
       zoomControl: true,
       zoomControlOptions: {
         position: google.maps.ControlPosition.RIGHT_TOP
       },
       fullscreenControl: false,
-      streetViewControl: false
+      streetViewControl: false,
+      mapId: '55fdbe5b069cc36d75c6e2d6'
     })
 
     // try to center the map on current location
@@ -492,7 +493,14 @@ let     authToken        = localStorage.getItem('authToken')
           new google.maps.Marker({
             position: coords,
             map: map,
-            icon: './res/bluecircle.png',
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 12,
+              fillColor: '#4285F4',
+              fillOpacity: 1,
+              strokeColor: '#fff',
+              strokeWeight: 3
+            },
             title: 'My Location'
           })
         } else {
@@ -600,7 +608,7 @@ let     authToken        = localStorage.getItem('authToken')
 
   // load Google Maps
   var script = document.createElement('script')
-  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init'
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init&libraries=marker'
   script.async = true
   script.defer = true
   document.head.appendChild(script)
@@ -641,6 +649,19 @@ let     authToken        = localStorage.getItem('authToken')
     const marker = L.marker([lat, lng], { icon }).addTo(map);
     marker.bindPopup('Interactive Pulse Marker!');
     return marker;
+  }
+
+  // Helper for animated heart-pulse marker
+  function createHeartPulseMarker() {
+    const div = document.createElement('div');
+    div.className = 'heart-pulse-marker';
+    div.innerHTML = `
+      <div class="pulse"></div>
+      <svg class="icon" viewBox="0 0 32 32" fill="#ff0046" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 29s-13-8.14-13-17A7 7 0 0 1 16 5a7 7 0 0 1 13 7c0 8.86-13 17-13 17z"/>
+      </svg>
+    `;
+    return div;
   }
 
 document.addEventListener('DOMContentLoaded', function() {
