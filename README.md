@@ -1,6 +1,6 @@
-# Crowdsourced GeoTracker
+# Dhaka
 
-A real-time, crowdsourced mapping application for tracking military movements and activities. Built with Node.js, MySQL, and Google Maps API.
+A real-time, crowdsourced mapping application for tracking ongoing movements and activities around Dhaka. Built with Node.js, MySQL, and Google Maps API.
 
 ## Features
 
