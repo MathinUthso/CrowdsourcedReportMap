@@ -612,3 +612,30 @@ label {
   width: 28px;
   height: 28px;
 }
+.heart-pulse-marker {
+  width: 36px;
+  height: 36px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.heart-pulse-marker .pulse {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 0, 70, 0.25);
+  animation: pulse-beat 1.2s infinite;
+}
+.heart-pulse-marker .icon {
+  position: relative;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+}
+@keyframes pulse-beat {
+  0% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 0.7; }
+}
