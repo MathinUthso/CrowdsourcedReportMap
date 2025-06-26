@@ -5,6 +5,7 @@ const settings = {
     lat: 23.8103,
     lng: 90.4125
   },
+  mapDefaultZoom: 12,
   mapCenterOnUsersLocationInBounds: {
     latmin: 40.0,
     lngmin: 15.0,
