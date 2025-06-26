@@ -5,18 +5,18 @@ const moment = require('moment')
 const main = async () => {
   const res = await fetch('https://liveuamap.com/ajax/do?act=pts&curid=0&time=' + moment().format('X') + '&last=0', {
     'headers': {
-      'accept': 'text/html, */*; q=0.01',
-      'accept-language': 'en,sk-SK;q=0.9,sk;q=0.8,cs;q=0.7',
-      'sec-ch-ua': '\' Not A;Brand\';v=\'99\', \'Chromium\';v=\'98\', \'Google Chrome\';v=\'98\'',
-      'sec-ch-ua-mobile': '?0',
+      'accept'            : 'text/html, */*; q=0.01',
+      'accept-language'   : 'en,sk-SK;q=0.9,sk;q=0.8,cs;q=0.7',
+      'sec-ch-ua'         : '\' Not A;Brand\';v=\'99\', \'Chromium\';v=\'98\', \'Google Chrome\';v=\'98\'',
+      'sec-ch-ua-mobile'  : '?0',
       'sec-ch-ua-platform': '\'Linux\'',
-      'sec-fetch-dest': 'empty',
-      'sec-fetch-mode': 'cors',
-      'sec-fetch-site': 'same-origin',
-      'x-csrf-token': 'zW8oXmYCdnmQKlHXT8i4SLw3vkRwyzbl8Ytn-IGK6iPYF-COdq0YwT5UU8fSKPXQTjAigyjePcMRcI8ENxxNxg==',
+      'sec-fetch-dest'    : 'empty',
+      'sec-fetch-mode'    : 'cors',
+      'sec-fetch-site'    : 'same-origin',
+      'x-csrf-token'      : 'zW8oXmYCdnmQKlHXT8i4SLw3vkRwyzbl8Ytn-IGK6iPYF-COdq0YwT5UU8fSKPXQTjAigyjePcMRcI8ENxxNxg==',
       'x-requested-with': 'XMLHttpRequest',
-      'Referer': 'https://liveuamap.com/en/time/09.03.2022',
-      'Referrer-Policy': 'strict-origin-when-cross-origin'
+      'Referer'         : 'https://liveuamap.com/en/time/09.03.2022',
+      'Referrer-Policy'   : 'strict-origin-when-cross-origin'
     },
     'body': null,
     'method': 'GET'

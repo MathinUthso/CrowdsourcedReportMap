@@ -185,31 +185,30 @@ USE crowdsourced_map;
     INDEX idx_created (created_at)
   );
 
--- Insert default report types
-INSERT INTO report_types (name, description, color, icon) VALUES
-('INFANTRY', 'Foot soldiers, military personnel', '#FF0000', 'infantry.png'),
-('VEHICLES', 'Tanks, APCs, military vehicles', '#0000FF', 'vehicle.png'),
-('AIRCRAFT', 'Helicopters, planes, drones', '#00FFFF', 'aircraft.png'),
-('ARTILLERY', 'Artillery, missile systems', '#FFA500', 'artillery.png'),
-('NAVAL', 'Ships, naval vessels', '#000080', 'naval.png'),
-('CIVILIAN', 'Civilian casualties, infrastructure', '#808080', 'civilian.png'),
-('SUPPLY', 'Supply convoys, logistics', '#008000', 'supply.png');
+  -- Insert default report types
+  INSERT INTO report_types (name, description, color, icon) VALUES
+  ('Political Movement', 'Political rallies, marches, or gatherings', '#FF5733', 'political_movement.png'),
+  ('Road Blockade', 'Obstruction or closure of roads', '#C70039', 'road_blockade.png'),
+  ('Protest', 'Public demonstrations or protests', '#FFC300', 'protest.png'),
+  ('Genjam', 'General disorder or chaos', '#900C3F', 'genjam.png'),
+  ('VIP Movement', 'Movement of VIPs causing disruptions', '#2980B9', 'vip_movement.png'),
+  ('Fire', 'Fire incidents or hazards', '#E74C3C', 'fire.png'),
+  ('Traffic Jam', 'Heavy traffic congestion', '#27AE60', 'traffic_jam.png');
 
--- Insert sample locations (Ukraine conflict area)
+-- Insert sample locations (Dhaka district)
 INSERT INTO locations (name, description, boundary, country, region) VALUES
-('Kyiv Oblast', 'Kyiv region and surrounding areas', 
- ST_GeomFromText('POLYGON((29.5 50.2, 31.5 50.2, 31.5 51.5, 29.5 51.5, 29.5 50.2))', 4326),
- 'Ukraine', 'Central'),
-('Donetsk Oblast', 'Donetsk region', 
- ST_GeomFromText('POLYGON((36.5 47.5, 39.5 47.5, 39.5 49.5, 36.5 49.5, 36.5 47.5))', 4326),
- 'Ukraine', 'Eastern'),
-('Luhansk Oblast', 'Luhansk region', 
- ST_GeomFromText('POLYGON((38.0 48.0, 40.5 48.0, 40.5 50.0, 38.0 50.0, 38.0 48.0))', 4326),
- 'Ukraine', 'Eastern');
-
+('Dhaka City', 'Dhaka metropolitan area', 
+ ST_GeomFromText('POLYGON((90.32 23.68, 90.52 23.68, 90.52 23.90, 90.32 23.90, 90.32 23.68))', 4326),
+ 'Bangladesh', 'Dhaka'),
+('Dhaka District', 'Dhaka district and surrounding areas', 
+ ST_GeomFromText('POLYGON((90.10 23.60, 90.70 23.60, 90.70 24.00, 90.10 24.00, 90.10 23.60))', 4326),
+ 'Bangladesh', 'Dhaka'),
+('Narayanganj', 'Narayanganj district', 
+ ST_GeomFromText('POLYGON((90.45 23.60, 90.65 23.60, 90.65 23.85, 90.45 23.85, 90.45 23.60))', 4326),
+ 'Bangladesh', 'Dhaka');
 -- Create admin user (password: admin123 - should be changed in production)
 INSERT INTO users (username, email, password_hash, role) VALUES
-('admin', 'admin@geotracker.com', '$2b$10$rQZ8K9mN2pL7vX1cY3wE6uI8oP9qR0sT1uV2wX3yZ4aA5bB6cC7dD8eE9fF0gG', 'admin');
+('admin', 'admin@DhakaAlert.com', '$2b$10$rQZ8K9mN2pL7vX1cY3wE6uI8oP9qR0sT1uV2wX3yZ4aA5bB6cC7dD8eE9fF0gG', 'admin');
 
 -- Enable spatial functions
 SET sql_mode = '';

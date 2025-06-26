@@ -1,3 +1,4 @@
 #ignore this file
-settings.js
+/backend/settings.js
+/backend/file_uploads
 

@@ -19,7 +19,9 @@ const { authenticateToken, requireRole, optionalAuth } = require('./middleware/a
 // Import settings
 const { listenPort, rateLimitWindowMs, rateLimitMax, uploadPath } = require('./settings')
 
+// Serve static files FIRST
 const app = express()
+app.use(express.static(path.join(__dirname, '../frontend-web')))
 
 // Security middleware
 app.use(helmet())
@@ -29,16 +31,6 @@ app.use(cors({
   origin: process.env.NODE_ENV === 'production' ? false : true,
   credentials: true
 }))
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: rateLimitWindowMs,
-  max: rateLimitMax,
-  message: { error: 'Too many requests from this IP, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
-app.use(limiter)
 
 // Body parsing middleware
 app.use(bodyParser.json({ limit: '10mb' }))
@@ -115,7 +107,6 @@ app.use('/reports/:id/status', authenticateToken, requireRole(['admin', 'moderat
 app.put('/reports/:id/status', reports.updateReportStatus)
 
 // Serve static files
-app.use(express.static('../frontend-web'))
 app.use('/uploads', express.static(uploadPath))
 
 // Health check endpoint
@@ -137,6 +128,12 @@ app.use((err, req, res, next) => {
   console.error('Unhandled error:', err)
   res.status(500).json({ error: 'Internal server error' })
 })
+
+// Set CORP header for all resources
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  next();
+});
 
 // Create server with error handling
 const server = app.listen(listenPort, () => {
