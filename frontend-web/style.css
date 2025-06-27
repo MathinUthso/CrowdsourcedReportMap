@@ -722,3 +722,6 @@ label {
   z-index: 1100;
   margin: 1.2em 0 0 0.5em;
 }
+
+#routing-ui { display: none; }
+#controls { display: none; }
