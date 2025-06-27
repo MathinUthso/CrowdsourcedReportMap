@@ -49,7 +49,7 @@ Dhaka Alert is a real-time, crowdsourced mapping platform for tracking ongoing e
 ### Installation
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/MathinUthso/CrowdsourcedReportMap
    cd Dhaka-Alert
    ```
 2. **Install dependencies**
