@@ -124,51 +124,22 @@
     if (markers && markers[reportId] && markers[reportId].markerObject) {
       const marker = markers[reportId].markerObject;
       highlightedMarkerId = reportId;
-      const icon = marker.getIcon();
-      if (icon && icon.url && icon.scaledSize) {
-        // Custom SVG icon: make it much larger
-        marker.setIcon({
-          ...icon,
-          scaledSize: new google.maps.Size(60, 60)
-        });
-      } else {
-        // Default marker: use previous highlight logic
-        marker.setIcon({
-          ...icon,
-          scale: 18,
-          strokeColor: '#ff9800',
-          fillColor: '#ff9800',
-          strokeWeight: 3,
-          fillOpacity: 1,
-          strokeOpacity: 1
-        });
-      }
+      // Remove zoom effect, just pop (bounce) the marker
       marker.setZIndex(9999);
+      if (window.google && window.google.maps && google.maps.Animation) {
+        marker.setAnimation(google.maps.Animation.BOUNCE);
+        setTimeout(() => marker.setAnimation(null), 700); // bounce for 700ms
+      }
     }
   }
   function unhighlightMarker() {
     if (highlightedMarkerId && markers && markers[highlightedMarkerId] && markers[highlightedMarkerId].markerObject) {
       const loc = markers[highlightedMarkerId];
       const marker = loc.markerObject;
-      const icon = marker.getIcon();
-      if (icon && icon.url && icon.scaledSize) {
-        // Custom SVG icon: restore normal size
-        marker.setIcon({
-          ...icon,
-          scaledSize: new google.maps.Size(40, 40)
-        });
-      } else {
-        marker.setIcon({
-          ...icon,
-          scale: isMobileDevice ? 30 : 9,
-          strokeColor: loc.type_color || getMarkerColorFromType(loc.type_name),
-          fillColor: loc.type_color || getMarkerColorFromType(loc.type_name),
-          strokeWeight: 2,
-          fillOpacity: 1,
-          strokeOpacity: 1
-        });
-      }
       marker.setZIndex(undefined);
+      if (window.google && window.google.maps && google.maps.Animation) {
+        marker.setAnimation(null);
+      }
     }
     highlightedMarkerId = null;
   }
