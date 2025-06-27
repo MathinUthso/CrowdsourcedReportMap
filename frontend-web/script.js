@@ -330,7 +330,8 @@ let timeFilterEnabled = true;
       case 'ROAD BLOCKADE':
         return {
           url: './Icons/blockade.svg',
-          scaledSize: new google.maps.Size(40, 40)
+          scaledSize: new google.maps.Size(40, 40),
+          anchor: new google.maps.Point(20, 20)
         };
       
       case 'PROTEST':
@@ -359,18 +360,18 @@ let timeFilterEnabled = true;
       
       case 'TRAFFIC JAM':
         return {
-          url         : './Icons/traffic_jam.svg',
+          url       : './Icons/traffic_jam.svg',
           scaledSize: new google.maps.Size(40, 40)
         };
       
       default:
         return {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: baseColor,
-          fillOpacity: 1,
-          strokeColor: '#fff',
+          path        : google.maps.SymbolPath.CIRCLE,
+          fillColor   : baseColor,
+          fillOpacity : 1,
+          strokeColor : '#fff',
           strokeWeight: 2,
-          scale: scale
+          scale       : scale
         };
     }
   }
@@ -466,10 +467,6 @@ let timeFilterEnabled = true;
             const description = form.querySelector('input[name="description"]').value;
             const marker = new google.maps.Marker({
               position: { lat, lng: lon },
-              label: {
-                text : typeName ? typeName.toUpperCase()[0]: 'R',
-                color: 'white'
-              },
               title: typeName || 'REPORT',
               map: map,
               icon: getMarkerIconFromType(typeName)
@@ -592,10 +589,6 @@ let timeFilterEnabled = true;
             markers[loc.id] = loc
             markers[loc.id].markerObject = new google.maps.Marker({
               position: new google.maps.LatLng(loc.lat, loc.lon),
-              label: {
-                text: loc.type_name ? loc.type_name.toUpperCase()[0] : 'R',
-                color: 'white'
-              },
               title: loc.type_name || 'REPORT',
               map: map,
               icon: getMarkerIconFromType(loc.type_name)
