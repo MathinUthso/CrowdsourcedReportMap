@@ -68,8 +68,8 @@ Dhaka Alert is a real-time, crowdsourced mapping platform for tracking ongoing e
    npm start
    ```
 6. **Access the app**
-   - Frontend: `http://localhost:3000`
-   - Backend API: `http://localhost:3000/api`
+   - Frontend: `http://127.0.0.1:3000/`
+   - Backend API: `http://127.0.0.1:3000/api`
 
 ---
 
