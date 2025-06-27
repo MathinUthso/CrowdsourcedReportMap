@@ -16,7 +16,17 @@ let     authToken        = localStorage.getItem('authToken')
 let reportTypeFilter = 'all';
 let verificationFilter = 'all';
 let sortOrder = 'newest';
-let timeFilterEnabled = true;
+let timeFilterEnabled = false;
+
+// --- Routing UI State ---
+let routingStart = null;
+let routingEnd = null;
+let routingPicking = null; // 'start' or 'end'
+let routingPolyline = null;
+let routingAMarker = null;
+let routingBMarker = null;
+let routingConflictMarkers = [];
+let routingMode = false;
 
   // Authentication Functions
   function showLoginModal() {
@@ -147,7 +157,9 @@ let timeFilterEnabled = true;
       console.error('Network error occurred')
       alert('Network error: Unable to connect to server')
     })
-    oReq.open('GET', settings.backendUrl + uri + ((params && Object.keys(params) && Object.keys(params).length) ? '?' + Object.keys(params).map(k => k + '=' + params[k]).join('&') : ''))
+    // Only include params with non-empty, non-null, non-undefined values
+    let filteredParams = params ? Object.keys(params).filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '').reduce((acc, k) => { acc[k] = params[k]; return acc; }, {}) : {};
+    oReq.open('GET', settings.backendUrl + uri + (Object.keys(filteredParams).length ? '?' + Object.keys(filteredParams).map(k => k + '=' + encodeURIComponent(filteredParams[k])).join('&') : ''))
     if (authToken) {
       oReq.setRequestHeader('Authorization', 'Bearer ' + authToken)
     }
@@ -210,43 +222,56 @@ let timeFilterEnabled = true;
     })
   }
 
+  // --- Modern Upvote/Downvote UI for report info window ---
+  function getVoteBoxHtml(reportId, userVote, status, netVotes) {
+    // status: 'verified', 'pending', 'unverified'
+    // userVote: 'upvote', 'downvote', or null
+    let statusIcon = '';
+    if (status === 'verified') {
+      statusIcon = '<div style="margin-top:1.3em;font-size:2em;color:#22c55e;">✔</div>';
+    } else if (status === 'pending') {
+      statusIcon = '<div style="margin-top:1.3em;font-size:2em;color:#888;">⏳</div>';
+    } else if (status === 'unverified') {
+      statusIcon = '<div style="margin-top:1.3em;font-size:2em;color:#e11d48;">❌</div>';
+    }
+    // SVGs for arrows
+    const upArrow = userVote === 'upvote'
+      ? `<svg width='18' height='18' viewBox='0 0 24 24' style='display:block;' fill='#2563eb' stroke='#2563eb' stroke-width='2'><polygon points='12,5 5,17 19,17'/></svg>`
+      : `<svg width='18' height='18' viewBox='0 0 24 24' style='display:block;' fill='none' stroke='#2563eb' stroke-width='2'><polygon points='12,5 5,17 19,17'/></svg>`;
+    const downArrow = userVote === 'downvote'
+      ? `<svg width='18' height='18' viewBox='0 0 24 24' style='display:block;' fill='#e11d48' stroke='#e11d48' stroke-width='2'><polygon points='12,19 5,7 19,7'/></svg>`
+      : `<svg width='18' height='18' viewBox='0 0 24 24' style='display:block;' fill='none' stroke='#e11d48' stroke-width='2'><polygon points='12,19 5,7 19,7'/></svg>`;
+    // Net votes: show +N for positive, -N for negative, 0 for zero
+    let netVotesDisplay = netVotes > 0 ? '+' + netVotes : netVotes;
+    return `
+      <div class=\"vote-box\" style=\"display:flex;flex-direction:column;align-items:center;gap:0.08em;margin-left:0.7em;user-select:none;width:1.7em;min-width:1.7em;\">
+        <button onclick=\"voteOnReport(${reportId}, 'upvote')\" class=\"vote-arrow upvote\" style=\"background:none;border:none;cursor:pointer;padding:0;margin:0;line-height:1;\">${upArrow}</button>
+        <div class=\"vote-count\" style=\"font-size:0.85em;font-weight:600;color:#222;min-width:1.2em;text-align:center;\">${netVotesDisplay}</div>
+        <button onclick=\"voteOnReport(${reportId}, 'downvote')\" class=\"vote-arrow downvote\" style=\"background:none;border:none;cursor:pointer;padding:0;margin:0;line-height:1;\">${downArrow}</button>
+        ${statusIcon}
+      </div>
+    `;
+  }
+
+  // Patch: updateReportVoteDisplay for new UI
   function updateReportVoteDisplay(reportId, voteData) {
     const voteContainer = document.getElementById('vote-container-' + reportId)
     if (voteContainer) {
-      let voteHtml = '<div class="vote-section">'
-      
-      // Vote buttons
-      voteHtml += '<div class="vote-buttons">'
-      voteHtml += '<button onclick="voteOnReport(' + reportId + ', \'upvote\')" class="vote-btn upvote">👍 Upvote</button>'
-      voteHtml += '<button onclick="voteOnReport(' + reportId + ', \'downvote\')" class="vote-btn downvote">👎 Downvote</button>'
-      voteHtml += '<button onclick="voteOnReport(' + reportId + ', \'verify\')" class="vote-btn verify">✅ Verify</button>'
-      voteHtml += '<button onclick="voteOnReport(' + reportId + ', \'dispute\')" class="vote-btn dispute">❌ Dispute</button>'
-      voteHtml += '</div>'
-
-      // Vote summary
-      if (voteData.summary) {
-        voteHtml += '<div class="vote-summary">'
-        voteData.summary.forEach(vote => {
-          voteHtml += '<span class="vote-count">' + vote.vote_type + ': ' + vote.count + '</span>'
-        })
-        voteHtml += '</div>'
+      const upvotes = voteData.summary?.find(v => v.vote_type === 'upvote')?.count || 0;
+      const downvotes = voteData.summary?.find(v => v.vote_type === 'downvote')?.count || 0;
+      const verifications = voteData.summary?.find(v => v.vote_type === 'verify')?.count || 0;
+      const totalVotes = voteData.votes?.length || 0;
+      let status = 'unverified';
+      if (upvotes >= 5) status = 'verified';
+      else if (totalVotes > 0) status = 'pending';
+      // Find the user's vote (if any)
+      let userVote = null;
+      if (voteData.votes && Array.isArray(voteData.votes) && currentUser) {
+        const myVote = voteData.votes.find(v => v.username === currentUser.username);
+        if (myVote) userVote = myVote.vote_type;
       }
-
-      // Verification status
-      const upvotes = voteData.summary?.find(v => v.vote_type === 'upvote')?.count || 0
-      const verifications = voteData.summary?.find(v => v.vote_type === 'verify')?.count || 0
-      const totalVotes = voteData.votes?.length || 0
-
-      if (upvotes >= 5 || verifications >= 3) {
-        voteHtml += '<div class="verification-status verified">✅ Verified</div>'
-      } else if (totalVotes > 0) {
-        voteHtml += '<div class="verification-status pending">⏳ Pending Verification</div>'
-      } else {
-        voteHtml += '<div class="verification-status unverified">❓ Unverified</div>'
-      }
-
-      voteHtml += '</div>'
-      voteContainer.innerHTML = voteHtml
+      const netVotes = upvotes - downvotes;
+      voteContainer.innerHTML = getVoteBoxHtml(reportId, userVote, status, netVotes);
     }
   }
 
@@ -534,14 +559,17 @@ let timeFilterEnabled = true;
     var ne = bounds.getNorthEast()
     var sw = bounds.getSouthWest()
 
-    requestAPIGet ('/reports', {
+    const params = {
       latmin: sw.lat(),
       lonmin: sw.lng(),
       latmax: ne.lat(),
       lonmax: ne.lng(),
-      time: displayedTime,
       ...(!timeFilterEnabled ? { show_all: 1 } : {})
-    }, (response) => {
+    };
+    if (timeFilterEnabled && Number.isInteger(displayedTime)) {
+      params.time = displayedTime;
+    }
+    requestAPIGet ('/reports', params, (response) => {
       const locations = JSON.parse(response)
       // --- Apply control bar filters ---
       let filtered = locations;
@@ -603,9 +631,13 @@ let timeFilterEnabled = true;
                 console.log('[INFO WINDOW] media_url:', loc.media_url, 'imageUrl:', imageUrl);
                 content += '<img src="' + imageUrl + '" alt="Report image" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:0.7rem;box-shadow:0 1px 6px #0001;" onerror="console.error(\'Failed to load image:\', this.src);this.style.display=\'none\';">';
               }
-              content += '<div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:0.5rem;">';
+              content += '<div style="display:flex;flex-direction:row;align-items:center;gap:0.7rem;margin-bottom:0.5rem;">';
+              content += '<div style="flex:1;">';
               if (loc.type_name) content += '<span style="font-size:0.98rem;background:#f3f6fa;padding:0.18em 0.7em;border-radius:1em;font-weight:500;">' + loc.type_name + '</span>';
               if (loc.confidence_level) content += '<span style="font-size:0.98rem;color:#888;">' + loc.confidence_level.charAt(0).toUpperCase() + loc.confidence_level.slice(1) + '</span>';
+              content += '</div>';
+              // Vote box placeholder on the right
+              content += `<div id="vote-container-${loc.id}" style="min-width:1.7em;"></div>`;
               content += '</div>';
               if (loc.valid_from) content += '<div style="font-size:0.92rem;color:#888;margin-bottom:0.2rem;">' + moment(loc.valid_from).format('D MMM YYYY, HH:mm') + '</div>';
               if (loc.description) content += '<div style="font-size:0.97rem;color:#444;margin-bottom:0.2rem;">' + loc.description + '</div>';
@@ -764,6 +796,91 @@ let timeFilterEnabled = true;
     if (window.L && map) {
       addPulseMarker(23.8103, 90.4125); // Example: Dhaka
     }
+
+    // Routing UI event listeners
+    const startInput = document.getElementById('route-start');
+    const endInput = document.getElementById('route-end');
+    const pickStartBtn = document.getElementById('pick-start-btn');
+    const pickEndBtn = document.getElementById('pick-end-btn');
+    const routeBtn = document.getElementById('route-btn');
+
+    if (pickStartBtn) {
+      pickStartBtn.onclick = function() {
+        routingPicking = 'start';
+        pickStartBtn.style.background = '#2563eb';
+        pickStartBtn.style.color = '#fff';
+        pickEndBtn.style.background = '';
+        pickEndBtn.style.color = '';
+        map.setOptions({ draggableCursor: 'crosshair' });
+      };
+    }
+    if (pickEndBtn) {
+      pickEndBtn.onclick = function() {
+        routingPicking = 'end';
+        pickEndBtn.style.background = '#2563eb';
+        pickEndBtn.style.color = '#fff';
+        pickStartBtn.style.background = '';
+        pickStartBtn.style.color = '';
+        map.setOptions({ draggableCursor: 'crosshair' });
+      };
+    }
+    if (routeBtn) {
+      routeBtn.onclick = function() {
+        fetchAndDisplayRoute();
+      };
+    }
+
+    // Allow manual entry of coordinates
+    if (startInput) {
+      startInput.addEventListener('change', function() {
+        const val = startInput.value.trim();
+        if (/^-?\d+\.\d+,-?\d+\.\d+$/.test(val)) {
+          const [lat, lng] = val.split(',').map(Number);
+          routingStart = { lat, lng };
+          setRoutingMarker('A', { lat, lng });
+        }
+      });
+    }
+    if (endInput) {
+      endInput.addEventListener('change', function() {
+        const val = endInput.value.trim();
+        if (/^-?\d+\.\d+,-?\d+\.\d+$/.test(val)) {
+          const [lat, lng] = val.split(',').map(Number);
+          routingEnd = { lat, lng };
+          setRoutingMarker('B', { lat, lng });
+        }
+      });
+    }
+
+    // Add Google Maps Places Autocomplete to A and B inputs
+    if (window.google && google.maps.places) {
+      if (startInput) {
+        const autocompleteA = new google.maps.places.Autocomplete(startInput);
+        autocompleteA.addListener('place_changed', function() {
+          const place = autocompleteA.getPlace();
+          if (place && place.geometry && place.geometry.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            routingStart = { lat, lng };
+            setRoutingMarker('A', { lat, lng });
+            startInput.value = place.formatted_address || (lat + ',' + lng);
+          }
+        });
+      }
+      if (endInput) {
+        const autocompleteB = new google.maps.places.Autocomplete(endInput);
+        autocompleteB.addListener('place_changed', function() {
+          const place = autocompleteB.getPlace();
+          if (place && place.geometry && place.geometry.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            routingEnd = { lat, lng };
+            setRoutingMarker('B', { lat, lng });
+            endInput.value = place.formatted_address || (lat + ',' + lng);
+          }
+        });
+      }
+    }
   }
 
   // load project's metadata
@@ -920,5 +1037,392 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+
+// Map click handler for picking A/B
+function handleRoutingMapClick(e) {
+  if (!routingPicking) return;
+  const lat = e.latLng.lat();
+  const lng = e.latLng.lng();
+  if (routingPicking === 'start') {
+    routingStart = { lat, lng };
+    document.getElementById('route-start').value = lat.toFixed(6) + ',' + lng.toFixed(6);
+    setRoutingMarker('A', { lat, lng });
+  } else if (routingPicking === 'end') {
+    routingEnd = { lat, lng };
+    document.getElementById('route-end').value = lat.toFixed(6) + ',' + lng.toFixed(6);
+    setRoutingMarker('B', { lat, lng });
+  }
+  routingPicking = null;
+  document.getElementById('pick-start-btn').style.background = '';
+  document.getElementById('pick-start-btn').style.color = '';
+  document.getElementById('pick-end-btn').style.background = '';
+  document.getElementById('pick-end-btn').style.color = '';
+  map.setOptions({ draggableCursor: '' });
+}
+
+// Clean map click handler: only routing or only report logic
+const _origInit = init;
+init = function() {
+  _origInit.apply(this, arguments);
+  if (map) {
+    // Remove all previous click listeners
+    google.maps.event.clearListeners(map, 'click');
+    // Attach a single, robust click handler
+    map.addListener('click', function(e) {
+      if (routingMode) {
+        if (routingPicking) {
+          handleRoutingMapClick(e);
+        }
+        // Never show report popup in routing mode
+        return;
+      }
+      // --- Normal report-adding logic below ---
+      closeAddReportInterface();
+      const someMarkerOpen = Object.values(markers).find(m => !!m.markerTooltip)
+      if (someMarkerOpen) {
+        someMarkerOpen.markerTooltip.close()
+        someMarkerOpen.markerTooltip = null
+        return false
+      }
+      if (!currentUser) {
+        alert('Please login to add reports')
+        return
+      }
+      addReportMarker = new google.maps.Marker({
+        position: e.latLng,
+        map: map,
+        icon: './res/redcircle.png'
+      })
+      // prepare the tooltip content
+      let content = '<h2>Adding a report:</h2>'
+      content += '<form class="report-add-form" onsubmit="event.preventDefault(); addNewReport();">'
+      content += '<input type="hidden" name="lat" value="' + e.latLng.lat() + '" />'
+      content += '<input type="hidden" name="lon" value="' + e.latLng.lng() + '" />'
+      content += '<label>Title:<br>'
+      content += '<input type="text" name="title" placeholder="Brief title" required style="width:100%;margin-bottom:8px;"></input>'
+      content += '</label>'
+      content += '<label>What you see:<br>'
+      content += '<select name="type" class="report-add-type" style="width:100%;margin-bottom:8px;">'
+      if (projectMetadata.reportTypes) projectMetadata.reportTypes.forEach(t => {
+        content += '<option value="' + t.name + '">' + t.name + '</option>'
+      })
+      content += '</select>'
+      content += '</label>'
+      content += '<label>Confidence Level:<br>'
+      content += '<select name="confidence_level" style="width:100%;margin-bottom:8px;">'
+      content += '<option value="high">High - I am certain about this</option>'
+      content += '<option value="medium" selected>Medium - I am fairly sure</option>'
+      content += '<option value="low">Low - I am not very sure</option>'
+      content += '</select>'
+      content += '</label>'
+      content += '<label>Description (optional):<br>'
+      content += '<input type="text" name="description" placeholder="Additional details" style="width:100%;margin-bottom:8px;"></input>'
+      content += '</label>'
+      content += '<label>Photo (optional):<br>'
+      content += '<input type="file" name="mediafile" accept="image/*" style="margin-top: 5px; margin-bottom: 8px; width:100%;" onchange="previewImage(this)"></input>'
+      content += '<div id="image-preview" style="margin-bottom:8px;"></div>'
+      content += '<small style="color: #666; font-size: 0.8rem;">Max 10MB (JPG, PNG, WebP)</small>'
+      content += '</label>'
+      content += '<label>External Media Link (optional):<br>'
+      content += '<input type="url" name="mediaurl" placeholder="Paste Facebook, Twitter, or YouTube link" style="width:100%;margin-bottom:8px;"></input>'
+      content += '</label>'
+      content += '<div id="report-error" style="color:red; font-size:0.9rem; margin-bottom:8px; display:none;"></div>'
+      content += '<button type="submit" id="send-report-btn" style="width:100%;">Send Report</button>'
+      content += '<div id="report-loading" style="display:none; text-align:center; margin-top:8px;">Sending...</div>'
+      content += '</form>'
+      // close other tooltips before opening this one
+      Object.values(markers).forEach(m => {
+        if (m.markerTooltip) {
+          m.markerTooltip.close()
+          m.markerTooltip = null
+        }
+      })
+      addReportTooltip = new google.maps.InfoWindow({
+        content
+      })
+      addReportTooltip.open({
+        anchor: addReportMarker,
+        map,
+        shouldFocus: true
+      })
+      google.maps.event.addListener(addReportTooltip, 'closeclick', (e) => { closeAddReportInterface() })
+    });
+  }
+};
+
+// Helper: Generate multiple detour waypoints in a circle around a conflict
+function generateDetourWaypoints(conflict, radiusMeters = 500, numPoints = 8) {
+  const R = 6371000; // Earth radius in meters
+  const detours = [];
+  const lat = conflict.lat * Math.PI / 180;
+  const lon = conflict.lon * Math.PI / 180;
+  for (let i = 0; i < numPoints; i++) {
+    const angle = (2 * Math.PI * i) / numPoints;
+    const dLat = (radiusMeters / R) * Math.cos(angle);
+    const dLon = (radiusMeters / R) * Math.sin(angle) / Math.cos(lat);
+    const detourLat = (lat + dLat) * 180 / Math.PI;
+    const detourLon = (lon + dLon) * 180 / Math.PI;
+    detours.push({ lat: detourLat, lng: detourLon });
+  }
+  return detours;
+}
+
+// --- Routing logic: fetch and display route with multi-detour ---
+async function fetchAndDisplayRoute() {
+  console.log('fetchAndDisplayRoute called');
+  if (!routingStart || !routingEnd) {
+    alert('Start or end point missing.');
+    return;
+  }
+  if (!window.google || !google.maps || !google.maps.DirectionsService) {
+    alert('Google DirectionsService is not available. Check if the Maps API is loaded and the API key is valid.');
+    console.error('Google DirectionsService missing:', window.google, google.maps);
+    return;
+  }
+  const directionsService = new google.maps.DirectionsService();
+  let bestRoute = null;
+  let minConflicts = Infinity;
+  let bestConflicts = null;
+  let bestWaypoints = [];
+  let attempts = 0;
+  let triedWaypoints = new Set();
+  let queue = [[]]; // Each item is an array of waypoints
+  const MAX_ATTEMPTS = 20;
+  while (queue.length > 0 && attempts < MAX_ATTEMPTS) {
+    const waypoints = queue.shift();
+    const request = {
+      origin: routingStart,
+      destination: routingEnd,
+      travelMode: google.maps.TravelMode.DRIVING,
+      waypoints: waypoints.length ? waypoints : undefined
+    };
+    attempts++;
+    console.log(`[ROUTING] Attempt ${attempts}, Request:`, request);
+    // eslint-disable-next-line no-await-in-loop
+    const result = await new Promise(resolve => {
+      directionsService.route(request, (res, status) => {
+        resolve({res, status});
+      });
+    });
+    if (result.status === 'OK' && result.res.routes && result.res.routes.length > 0) {
+      const route = result.res.routes[0].overview_path;
+      if (!route || !Array.isArray(route) || route.length === 0) {
+        continue;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      const conflicts = await checkRouteForConflicts(route, true); // true = return conflicts
+      if (conflicts.length < minConflicts) {
+        minConflicts = conflicts.length;
+        bestRoute = route;
+        bestConflicts = conflicts;
+        bestWaypoints = waypoints;
+      }
+      if (conflicts.length === 0) {
+        drawRoutingPolyline(route);
+        map.fitBounds(new google.maps.LatLngBounds(routingStart, routingEnd));
+        clearRoutingConflictMarkers();
+        return;
+      } else {
+        // For each conflict, try multiple detours in a circle
+        for (const conflict of conflicts) {
+          const detours = generateDetourWaypoints(conflict, 500, 8);
+          for (const detour of detours) {
+            const key = detour.lat.toFixed(6) + ',' + detour.lng.toFixed(6);
+            if (!triedWaypoints.has(key)) {
+              triedWaypoints.add(key);
+              queue.push([...(waypoints || []), { location: detour, stopover: false }]);
+            }
+          }
+        }
+      }
+    } else {
+      // No route found for this set of waypoints, try next
+      continue;
+    }
+  }
+  // If here, no conflict-free route found after all attempts
+  if (bestRoute) {
+    drawRoutingPolyline(bestRoute);
+    map.fitBounds(new google.maps.LatLngBounds(routingStart, routingEnd));
+    await checkRouteForConflicts(bestRoute, false); // show markers and alert
+    alert('Warning: Could not find a conflict-free route. Showing best attempt.');
+  } else {
+    alert('No route found.');
+  }
+}
+
+// Refactored: checkRouteForConflicts returns conflicts if returnList=true, else shows markers/alerts
+async function checkRouteForConflicts(route, returnList) {
+  clearRoutingConflictMarkers();
+  const bounds = map.getBounds();
+  const ne = bounds.getNorthEast();
+  const sw = bounds.getSouthWest();
+  const params = new URLSearchParams({
+    latmin: sw.lat(),
+    lonmin: sw.lng(),
+    latmax: ne.lat(),
+    lonmax: ne.lng(),
+    show_all: 1
+  });
+  const url = settings.backendUrl + '/reports?' + params.toString();
+  let conflicts = [];
+  try {
+    const resp = await fetch(url);
+    conflicts = await resp.json();
+  } catch (e) {
+    if (!returnList) alert('Failed to fetch conflicts for route check.');
+    return returnList ? [] : undefined;
+  }
+  // Only consider types that are conflicts
+  const conflictTypes = ['BLOCKADE', 'PROTEST', 'FIRE', 'TRAFFIC JAM', 'VIP MOVEMENT', 'POLITICAL MOVEMENT'];
+  const conflictPoints = conflicts.filter(r => conflictTypes.includes((r.type_name || '').toUpperCase()));
+  let foundConflict = false;
+  let foundLocations = [];
+  for (const pt of route) {
+    for (const c of conflictPoints) {
+      const dist = haversineDistance(pt.lat(), pt.lng(), c.lat, c.lon);
+      if (dist <= 500) {
+        foundConflict = true;
+        foundLocations.push(c);
+        if (!returnList) {
+          // Highlight conflict marker
+          const marker = new google.maps.Marker({
+            position: { lat: c.lat, lng: c.lon },
+            map: map,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: '#f59e42',
+              fillOpacity: 1,
+              strokeColor: '#c12525',
+              strokeWeight: 3
+            },
+            title: (c.type_name || 'Conflict') + ' near route'
+          });
+          routingConflictMarkers.push(marker);
+        }
+      }
+    }
+  }
+  if (!returnList && foundConflict) {
+    alert('Warning: Route passes within 500 meters of a conflict!');
+  }
+  return foundLocations;
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  const directionsBtn = document.getElementById('directions-btn');
+  const routingUI = document.getElementById('routing-ui');
+  if (directionsBtn && routingUI) {
+    directionsBtn.onclick = function() {
+      routingMode = true;
+      routingUI.style.display = 'flex';
+      directionsBtn.style.display = 'none';
+      // Clear previous routing state
+      routingStart = null;
+      routingEnd = null;
+      if (routingAMarker) { routingAMarker.setMap(null); routingAMarker = null; }
+      if (routingBMarker) { routingBMarker.setMap(null); routingBMarker = null; }
+      if (routingPolyline) { routingPolyline.setMap(null); routingPolyline = null; }
+      clearRoutingConflictMarkers();
+      document.getElementById('route-start').value = '';
+      document.getElementById('route-end').value = '';
+    };
+  }
+    // Add Cancel button to routing UI (only add once)
+  if (!document.getElementById('cancel-routing-btn')) {
+    let cancelBtn = document.createElement('button');
+    cancelBtn.id = 'cancel-routing-btn';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.marginLeft = '0.5em';
+    cancelBtn.onclick = function() {
+      routingMode = false;
+      routingUI.style.display = 'none';
+      directionsBtn.style.display = 'flex';
+      routingPicking = null;
+      document.getElementById('pick-start-btn').style.background = '';
+      document.getElementById('pick-start-btn').style.color = '';
+      document.getElementById('pick-end-btn').style.background = '';
+      document.getElementById('pick-end-btn').style.color = '';
+      map.setOptions({ draggableCursor: '' });
+      if (routingPolyline) { routingPolyline.setMap(null); routingPolyline = null; }
+      clearRoutingConflictMarkers();
+    };
+    routingUI.appendChild(cancelBtn);
+  }
+});
+
+// After all assignments/wrapping of init, expose it globally:
+window.init = init;
+
+function setRoutingMarker(type, position) {
+  if (type === 'A') {
+    if (routingAMarker) routingAMarker.setMap(null);
+    routingAMarker = new google.maps.Marker({
+      position,
+      map: map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#22c55e', // green
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 3
+      },
+      title: 'Start (A)'
+    });
+  } else if (type === 'B') {
+    if (routingBMarker) routingBMarker.setMap(null);
+    routingBMarker = new google.maps.Marker({
+      position,
+      map: map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#ef4444', // red
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 3
+      },
+      title: 'End (B)'
+    });
+  }
+}
+
+function clearRoutingConflictMarkers() {
+  if (window.routingConflictMarkers && Array.isArray(window.routingConflictMarkers)) {
+    window.routingConflictMarkers.forEach(m => m.setMap(null));
+    window.routingConflictMarkers = [];
+  } else {
+    window.routingConflictMarkers = [];
+  }
+}
+
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // meters
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function drawRoutingPolyline(path) {
+  if (window.routingPolyline) window.routingPolyline.setMap(null);
+  window.routingPolyline = new google.maps.Polyline({
+    path         : path,
+    geodesic     : true,
+    strokeColor  : '#2563eb',
+    strokeOpacity: 0.85,
+    strokeWeight : 6,
+    map          : map
+  });
+  if (!window.routingPolyline) {
+    alert('Failed to create polyline.');
+  }
+}
   
   

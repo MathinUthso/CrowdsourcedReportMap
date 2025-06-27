@@ -70,7 +70,10 @@ const getReportsInBoundingBox = async (request, response) => {
     if (!request.query.latmax || request.query.latmax.toString() !== parseFloat(request.query.latmax).toString()) throw new Error('Incorrect input: latmax (supported: float)')
     if (!request.query.lonmin || request.query.lonmin.toString() !== parseFloat(request.query.lonmin).toString()) throw new Error('Incorrect input: lonmin (supported: float)')
     if (!request.query.lonmax || request.query.lonmax.toString() !== parseFloat(request.query.lonmax).toString()) throw new Error('Incorrect input: lonmax (supported: float)')
-    if (!request.query.time || request.query.time.toString() !== parseInt(request.query.time).toString()) throw new Error('Incorrect input: time (supported: integer)')
+    // Only require 'time' if show_all is not set to '1'
+    if (request.query.show_all !== '1') {
+      if (!request.query.time || request.query.time.toString() !== parseInt(request.query.time).toString()) throw new Error('Incorrect input: time (supported: integer)')
+    }
 
     let whereClause = '';
     if (request.query.show_all === '1') {
