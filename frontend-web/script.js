@@ -1,14 +1,22 @@
+window.projectMetadata = {};
+let projectMetadata = window.projectMetadata;
+
 const   isMobileDevice   = (screen.width <= 768)
 const   isDarkMode       = (isMobileDevice && (moment().format('HH') >= 18 || moment().format('HH') <= 7))
 let     markers          = {}
 let     addReportMarker  = null
 let     addReportTooltip = null
 let     dbRequestTimeout = null
-let     projectMetadata  = {}
 let     map              = null
 let     displayedTime    = parseInt(moment().format('X'))
 let     currentUser      = null
 let     authToken        = localStorage.getItem('authToken')
+
+// --- Control Bar State ---
+let reportTypeFilter = 'all';
+let verificationFilter = 'all';
+let sortOrder = 'newest';
+let timeFilterEnabled = true;
 
   // Authentication Functions
   function showLoginModal() {
@@ -243,32 +251,62 @@ let     authToken        = localStorage.getItem('authToken')
   }
 
   // Displays the numbers of valid reports for each hour in last 14 days in the timeline at the top
-  function renderStatistics () {
+  function renderStatistics() {
     const statsEl = document.querySelector('#stats')
-    if (statsEl && projectMetadata && projectMetadata.validReportsInTime) {
-      const maxHeightPx = isMobileDevice ? 150 : 50
-      let maxInHour = 0
-      const validReports = isMobileDevice
-        ? projectMetadata.validReportsInTime.slice(-48)
-        : projectMetadata.validReportsInTime
-      validReports.forEach(h => {
-        if (parseInt(h.valid_reports) > maxInHour) maxInHour = parseInt(h.valid_reports)
-      })
-      let content = ''
-      let previousDate = ''
-      validReports.forEach(h => {
-        const currentDate = moment(h.hour).format('D. MMM.')
-        if (currentDate !== previousDate) {
-          if (previousDate !== '') content += '<div class="stats-date-divider" style="height: ' + maxHeightPx + 'px;" >&nbsp;' + currentDate + '</div>'
-          previousDate = currentDate
-        }
-        content += '<div class="stats-col' + ((moment(h.hour).isSame(moment(displayedTime, 'X'), 'hour')) ? ' is-displayed-time' : '') + '" style="height: ' + Math.round((h.valid_reports / maxInHour) * maxHeightPx) + 'px;" onclick="setDisplayedTime(' + moment(h.hour).format('X') + ')" title="' + moment(h.hour).format('D. MMM. YYYY HH:mm') + '"></div>'
-      })
+    if (!statsEl) return
 
-      content += '<div class="stats-title">Reports over time</div>'
-
-      statsEl.innerHTML = content
+    // Build report type options
+    let typeOptions = '<option value="all">All Types</option>';
+    if (projectMetadata && projectMetadata.reportTypes) {
+      projectMetadata.reportTypes.forEach(t => {
+        typeOptions += `<option value="${t.name}">${t.name}</option>`;
+      });
     }
+
+    // Build control bar HTML
+    let content = `
+      <div class="control-bar">
+        <label style="margin-right:1em;">
+          Type:
+          <select id="report-type-filter">${typeOptions}</select>
+        </label>
+        <label style="margin-right:1em;">
+          Verification:
+          <select id="verification-filter">
+            <option value="all">All</option>
+            <option value="verified">Verified</option>
+            <option value="pending">Pending</option>
+            <option value="unverified">Unverified</option>
+          </select>
+        </label>
+        <label style="margin-right:1em;">
+          Sort:
+          <select id="sort-order">
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="upvotes">Most Upvoted</option>
+          </select>
+        </label>
+        <button id="apply-filter-btn" style="margin-left:1em;">Apply Filter</button>
+      </div>
+    `;
+    statsEl.innerHTML = content;
+
+    // Set current values
+    document.getElementById('report-type-filter').value = reportTypeFilter;
+    document.getElementById('verification-filter').value = verificationFilter;
+    document.getElementById('sort-order').value = sortOrder;
+
+    // Remove onchange handlers from dropdowns, add click handler to button
+    document.getElementById('apply-filter-btn').onclick = function() {
+      reportTypeFilter = document.getElementById('report-type-filter').value;
+      verificationFilter = document.getElementById('verification-filter').value;
+      sortOrder = document.getElementById('sort-order').value;
+      loadReportsFromAPI();
+      // Hide the stats bar after applying filter
+      const statsContainer = document.getElementById('stats-container');
+      if (statsContainer) statsContainer.style.display = 'none';
+    };
   }
 
   // Assigns a marker color based on report type
@@ -276,6 +314,65 @@ let     authToken        = localStorage.getItem('authToken')
     if (type === 'VEHICLES') return 'blue'
     if (type === 'AIRCRAFT') return 'teal'
     return 'red'
+  }
+
+  function getMarkerIconFromType (type) {
+    const baseColor = getMarkerColorFromType(type);
+    const scale = isMobileDevice ? 5:2;
+    
+    switch(type?.toUpperCase()) {
+      case 'POLITICAL MOVEMENT':
+        return {
+          url: './Icons/political_movement.svg',
+          scaledSize: new google.maps.Size(40, 40)
+        };
+      
+      case 'ROAD BLOCKADE':
+        return {
+          url: './Icons/blockade.svg',
+          scaledSize: new google.maps.Size(40, 40)
+        };
+      
+      case 'PROTEST':
+        return {
+          url: './Icons/protest.svg',
+          scaledSize: new google.maps.Size(40, 40)
+        };
+      
+      case 'GENJAM':
+        return {
+          url: './Icons/Genjam.svg',
+          scaledSize: new google.maps.Size(38, 38)
+        };
+      
+      case 'VIP MOVEMENT':
+        return {
+          url: './Icons/vip.svg',
+          scaledSize: new google.maps.Size(40, 40)
+        };
+      
+      case 'FIRE':
+        return {
+          url: './Icons/fire.svg',
+          scaledSize: new google.maps.Size(40, 40)
+        };
+      
+      case 'TRAFFIC JAM':
+        return {
+          url         : './Icons/traffic_jam.svg',
+          scaledSize: new google.maps.Size(40, 40)
+        };
+      
+      default:
+        return {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: baseColor,
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 2,
+          scale: scale
+        };
+    }
   }
 
   function setDisplayedTime (newTime) {
@@ -344,6 +441,9 @@ let     authToken        = localStorage.getItem('authToken')
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', settings.backendUrl + '/reports');
+    if (authToken) {
+      xhr.setRequestHeader('Authorization', 'Bearer ' + authToken);
+    }
     xhr.onreadystatechange = function() {
       if (xhr.readyState === XMLHttpRequest.DONE) {
         loadingDiv.style.display = 'none';
@@ -367,20 +467,12 @@ let     authToken        = localStorage.getItem('authToken')
             const marker = new google.maps.Marker({
               position: { lat, lng: lon },
               label: {
-                text: typeName ? typeName.toUpperCase()[0] : 'R',
+                text : typeName ? typeName.toUpperCase()[0]: 'R',
                 color: 'white'
               },
               title: typeName || 'REPORT',
               map: map,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                strokeColor: getMarkerColorFromType(typeName),
-                fillColor: getMarkerColorFromType(typeName),
-                strokeWeight: 2,
-                fillOpacity: 1,
-                strokeOpacity: 1,
-                scale: isMobileDevice ? 30 : 9
-              }
+              icon: getMarkerIconFromType(typeName)
             });
             marker.addListener('click', function () {
               let content = '<div style="min-width:220px;max-width:320px;padding:1rem 1.2rem 1rem 1.2rem;border-radius:12px;box-shadow:0 2px 16px #0002;background:#fff;font-family:sans-serif;">';
@@ -450,12 +542,50 @@ let     authToken        = localStorage.getItem('authToken')
       lonmin: sw.lng(),
       latmax: ne.lat(),
       lonmax: ne.lng(),
-      time: displayedTime
+      time: displayedTime,
+      ...(!timeFilterEnabled ? { show_all: 1 } : {})
     }, (response) => {
       const locations = JSON.parse(response)
-      console.log('Loaded reports:', locations) // Debug log
-      if (locations && locations.length) {
-        locations.forEach(loc => {
+      // --- Apply control bar filters ---
+      let filtered = locations;
+      // Type filter
+      if (reportTypeFilter !== 'all') {
+        filtered = filtered.filter(loc => loc.type_name === reportTypeFilter);
+      }
+      // Verification filter
+      if (verificationFilter !== 'all') {
+        filtered = filtered.filter(loc => {
+          const upvotes = loc.summary?.find(v => v.vote_type === 'upvote')?.count || 0;
+          const verifications = loc.summary?.find(v => v.vote_type === 'verify')?.count || 0;
+          const totalVotes = loc.votes?.length || 0;
+          if (verificationFilter === 'verified') return (upvotes >= 5 || verifications >= 3);
+          if (verificationFilter === 'pending') return (totalVotes > 0 && upvotes < 5 && verifications < 3);
+          if (verificationFilter === 'unverified') return (totalVotes === 0);
+          return true;
+        });
+      }
+      // Sort order
+      if (sortOrder === 'newest') {
+        filtered = filtered.sort((a, b) => (b.valid_from || 0) - (a.valid_from || 0));
+      } else if (sortOrder === 'oldest') {
+        filtered = filtered.sort((a, b) => (a.valid_from || 0) - (b.valid_from || 0));
+      } else if (sortOrder === 'upvotes') {
+        filtered = filtered.sort((a, b) => {
+          const aUp = a.summary?.find(v => v.vote_type === 'upvote')?.count || 0;
+          const bUp = b.summary?.find(v => v.vote_type === 'upvote')?.count || 0;
+          return bUp - aUp;
+        });
+      }
+      // --- Remove all existing markers from the map ---
+      Object.keys(markers).forEach(locId => {
+        if (markers[locId].markerObject) {
+          markers[locId].markerObject.setMap(null);
+        }
+      });
+      markers = {};
+      // Use filtered instead of locations for display
+      if (filtered && filtered.length) {
+        filtered.forEach(loc => {
           console.log('Report:', loc.id, 'Media URL:', loc.media_url) // Debug log
           if (!markers[loc.id]) {
             const reportAgeMinutes = moment(displayedTime, 'X').diff(loc.valid_from, 'minutes')
@@ -468,15 +598,7 @@ let     authToken        = localStorage.getItem('authToken')
               },
               title: loc.type_name || 'REPORT',
               map: map,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                strokeColor: loc.type_color || getMarkerColorFromType(loc.type_name),
-                fillColor: loc.type_color || getMarkerColorFromType(loc.type_name),
-                strokeWeight: 2,
-                fillOpacity: (reportAgeMinutes <= 60) ? 1 : 0.35,
-                strokeOpacity: (reportAgeMinutes <= 60) ? 1 : 0.45,
-                scale: isMobileDevice ? 30 : 9
-              }
+              icon: getMarkerIconFromType(loc.type_name)
             });
             markers[loc.id].markerObject.addListener('click', function (p) {
               // Modern, minimal info window content
@@ -511,7 +633,7 @@ let     authToken        = localStorage.getItem('authToken')
   function init () {
     // create the map
     map = new google.maps.Map(document.getElementById('map'), {
-      zoom: 5,
+      zoom: settings.mapDefaultZoom || 9,
       center: settings.mapDefaultLocation,
       mapTypeId: 'roadmap',
       controlSize: isMobileDevice ? 80 : undefined,
@@ -600,6 +722,13 @@ let     authToken        = localStorage.getItem('authToken')
       })
       content += '</select>'
       content += '</label>'
+      content += '<label>Confidence Level:<br>'
+      content += '<select name="confidence_level" style="width:100%;margin-bottom:8px;">'
+      content += '<option value="high">High - I am certain about this</option>'
+      content += '<option value="medium" selected>Medium - I am fairly sure</option>'
+      content += '<option value="low">Low - I am not very sure</option>'
+      content += '</select>'
+      content += '</label>'
       content += '<label>Description (optional):<br>'
       content += '<input type="text" name="description" placeholder="Additional details" style="width:100%;margin-bottom:8px;"></input>'
       content += '</label>'
@@ -609,7 +738,7 @@ let     authToken        = localStorage.getItem('authToken')
       content += '<small style="color: #666; font-size: 0.8rem;">Max 10MB (JPG, PNG, WebP)</small>'
       content += '</label>'
       content += '<label>External Media Link (optional):<br>'
-      content += '<input type="url" name="mediaurl" placeholder="Paste Twitter, Telegram, or YouTube link" style="width:100%;margin-bottom:8px;"></input>'
+      content += '<input type="url" name="mediaurl" placeholder="Paste Facebook, Twitter, or YouTube link" style="width:100%;margin-bottom:8px;"></input>'
       content += '</label>'
       content += '<div id="report-error" style="color:red; font-size:0.9rem; margin-bottom:8px; display:none;"></div>'
       content += '<button type="submit" id="send-report-btn" style="width:100%;">Send Report</button>'
@@ -741,6 +870,61 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Geolocation is not supported by your browser.');
       }
     });
+  }
+
+  const statsContainer = document.getElementById('stats-container');
+  const toggleStatsBtn = document.getElementById('toggle-stats-btn');
+  if (toggleStatsBtn && statsContainer) {
+    toggleStatsBtn.onclick = function() {
+      if (statsContainer.style.display === 'none' || statsContainer.style.display === '') {
+        statsContainer.style.display = 'block';
+        if (typeof renderStatistics === 'function') renderStatistics();
+      } else {
+        statsContainer.style.display = 'none';
+      }
+    };
+  }
+
+  // Time filter toggle
+  const timeFilterBtn = document.getElementById('time-filter-btn');
+  const controlsDiv = document.getElementById('controls');
+  if (timeFilterBtn && controlsDiv) {
+    // Set initial state
+    updateTimeFilterButtonState();
+    
+    timeFilterBtn.onclick = function() {
+      timeFilterEnabled = !timeFilterEnabled;
+      updateTimeFilterButtonState();
+      
+      if (timeFilterEnabled) {
+        controlsDiv.style.display = 'block';
+      } else {
+        controlsDiv.style.display = 'none';
+      }
+      // Reload reports with new filter
+      if (typeof loadReportsFromAPI === 'function') loadReportsFromAPI();
+    };
+  }
+
+  function updateTimeFilterButtonState() {
+    if (!timeFilterBtn) return;
+    
+    const svg = timeFilterBtn.querySelector('svg');
+    if (timeFilterEnabled) {
+      // Enabled state - blue colors
+      timeFilterBtn.style.background = '#3b82f6';
+      timeFilterBtn.style.borderColor = '#2563eb';
+      svg.querySelector('circle').setAttribute('stroke', '#ffffff');
+      svg.querySelector('polyline').setAttribute('stroke', '#ffffff');
+      timeFilterBtn.title = 'Time Filter: Enabled (Click to disable)';
+    } else {
+      // Disabled state - gray colors
+      timeFilterBtn.style.background = '#ffffff';
+      timeFilterBtn.style.borderColor = '#e5e7eb';
+      svg.querySelector('circle').setAttribute('stroke', '#6b7280');
+      svg.querySelector('polyline').setAttribute('stroke', '#6b7280');
+      timeFilterBtn.title = 'Time Filter: Disabled (Click to enable)';
+    }
   }
 });
   
