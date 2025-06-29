@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhaka Alert - Real-time Community Reports</title>
+    <link rel="icon" type="image/x-icon" href="./res/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="./homepage-style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>Dhaka Alert</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#leaderboard" class="nav-link">Leaderboard</a>
+                <a href="#about" class="nav-link">About</a>
+                <button class="btn btn-primary" onclick="showLoginModal()">Login</button>
+                <button class="btn btn-secondary" onclick="showSignupModal()">Sign Up</button>
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Real-time <span class="highlight">Dhaka Alerts</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Stay informed about traffic, protests, road blockades, and community events in Dhaka. Join thousands of users sharing real-time updates to help everyone navigate the city better.
+                </p>
+                <div class="hero-buttons">
+                    <button class="btn btn-primary btn-large" onclick="viewMap()">
+                        <i class="fas fa-map"></i>
+                        View Map
+                    </button>
+                    <button class="btn btn-outline btn-large" onclick="showSignupModal()">
+                        <i class="fas fa-user-plus"></i>
+                        Join Community
+                    </button>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <span class="stat-number" id="total-reports">0</span>
+                        <span class="stat-label">Reports Today</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" id="active-users">0</span>
+                        <span class="stat-label">Active Users</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" id="cities-covered">0</span>
+                        <span class="stat-label">Areas Covered</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="map-preview">
+                    <div class="map-placeholder">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <p>Interactive Dhaka Map</p>
+                        <small>Real-time alerts and reports</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">Why Choose Dhaka Alert?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>Real-time Updates</h3>
+                    <p>Get instant notifications about traffic jams, road blockades, protests, and community events as they happen in Dhaka.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Crowdsourced Intelligence</h3>
+                    <p>Benefit from the collective knowledge of thousands of Dhaka residents sharing local insights and updates.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Verified Information</h3>
+                    <p>Community voting system ensures the accuracy and reliability of reports before they're displayed.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Mobile Friendly</h3>
+                    <p>Access the map and report incidents from anywhere in Dhaka using your mobile device.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h3>Community Discussion</h3>
+                    <p>Comment on reports and engage with other Dhaka residents to share additional information.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3>Earn Points</h3>
+                    <p>Gain reputation points for helpful reports and comments. Climb the leaderboard and become a trusted community member.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Leaderboard Section -->
+    <section id="leaderboard" class="leaderboard">
+        <div class="container">
+            <h2 class="section-title">Community Leaders</h2>
+            <p class="section-subtitle">Top contributors based on total upvotes and helpful reports</p>
+            <div class="leaderboard-container">
+                <div class="leaderboard-header">
+                    <div class="rank-header">Rank</div>
+                    <div class="user-header">User</div>
+                    <div class="points-header">Points</div>
+                    <div class="reports-header">Reports</div>
+                </div>
+                <div class="leaderboard-list" id="leaderboard-list">
+                    <!-- Leaderboard items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <h2>Ready to Help Dhaka?</h2>
+            <p>Start contributing to your community today and help others navigate Dhaka more efficiently.</p>
+            <div class="cta-buttons">
+                <button class="btn btn-primary btn-large" onclick="showSignupModal()">
+                    <i class="fas fa-user-plus"></i>
+                    Create Account
+                </button>
+                <button class="btn btn-outline btn-large" onclick="viewMap()">
+                    <i class="fas fa-map"></i>
+                    Explore Map
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Dhaka Alert</h3>
+                    <p>Empowering Dhaka residents through real-time information sharing and community collaboration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#leaderboard">Leaderboard</a></li>
+                        <li><a href="#about">About</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#">Help Center</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Dhaka Alert. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Authentication Modals -->
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeAuthModal()">&times;</span>
+            <div id="login-form" class="auth-form">
+                <h2>Welcome Back</h2>
+                <p class="auth-subtitle">Sign in to your Dhaka Alert account</p>
+                <form onsubmit="login(event)">
+                    <div class="form-group">
+                        <label for="login-username">Username or Email</label>
+                        <input type="text" id="login-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+                </form>
+                <p class="auth-switch">Don't have an account? <a href="#" onclick="showSignupForm()">Sign up</a></p>
+            </div>
+            <div id="signup-form" class="auth-form hidden">
+                <!-- <h2>Join Dhaka Alert</h2>
+                <p class="auth-subtitle">Create your account to start contributing</p>
+                <form onsubmit="signup(event)"> -->
+                    <!-- <div class="form-group">
+                        <label for="signup-username">Username</label>
+                        <input type="text" id="signup-username" required>
+                    </div> -->
+                    <!-- <div class="form-group">
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" required>
+                    </div> -->
+                    <!-- <div class="form-group">
+                        <label for="signup-password">Password</label>
+                        <input type="password" id="signup-password" minlength="6" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+                </form> -->
+                <!-- <p class="auth-switch">Already have an account? <a href="#" onclick="showLoginForm()">Sign in</a></p> -->
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="./settings.js"></script>
+    <script type="text/javascript" src="./homepage.js"></script>
+</body>
+</html> 

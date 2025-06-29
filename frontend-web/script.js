@@ -641,6 +641,10 @@ let routingMode = false;
               content += '</div>';
               if (loc.valid_from) content += '<div style="font-size:0.92rem;color:#888;margin-bottom:0.2rem;">' + moment(loc.valid_from).format('D MMM YYYY, HH:mm') + '</div>';
               if (loc.description) content += '<div style="font-size:0.97rem;color:#444;margin-bottom:0.2rem;">' + loc.description + '</div>';
+              
+              // Add comments section
+              content = addCommentsToReportPopup(loc.id, content);
+              
               content += '</div>';
               // close other tooltips before opening this one
               if (addReportTooltip) addReportTooltip.close();
@@ -1423,6 +1427,12 @@ function drawRoutingPolyline(path) {
   if (!window.routingPolyline) {
     alert('Failed to create polyline.');
   }
+}
+
+function addCommentsToReportPopup(reportId, content) {
+  // Implementation of addCommentsToReportPopup function
+  // This function should return the modified content with comments section added
+  return content; // Placeholder return, actual implementation needed
 }
   
   

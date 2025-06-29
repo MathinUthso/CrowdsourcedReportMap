@@ -7,6 +7,7 @@
     <script type="text/javascript" src="./map-styles.js"></script>
     <link rel="icon" type="image/x-icon" href="./res/favicon.png">
     <link rel="stylesheet" type="text/css" href="./style.css?v=5" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <title>Dhaka Alert</title>
     <meta property="og:image" content="./res/Dhaka-Alert-preview.png">
     <meta property="og:url" content="./">
@@ -21,6 +22,9 @@
         <input id="map-search-box" type="text" placeholder="Search map..." autocomplete="off" style="width: 100%; max-width: 350px; padding: 0.4rem 1rem; border-radius: 1rem; border: 1px solid #ccc; font-size: 1rem;" />
       </form>
       <div class="nav-auth">
+        <a href="./homepage.html" class="nav-btn" style="text-decoration: none; margin-right: 10px;" title="Home">
+          <i class="fas fa-home" style="font-size: 1rem;"></i>
+        </a>
         <span id="user-info" class="hidden">
           <span id="username-display"></span>
           <button id="my-reports-btn" class="nav-btn">My Reports</button>
@@ -116,6 +120,7 @@
 
     <script type="text/javascript" src="./script.js"></script>
     <script type="text/javascript" src="./my-reports-dropdown.js"></script>
+    <script type="text/javascript" src="./comments.js"></script>
     <div id="edit-report-modal" class="modal hidden"><div class="modal-content" id="edit-report-modal-content"></div></div>
   </body>
 </html>

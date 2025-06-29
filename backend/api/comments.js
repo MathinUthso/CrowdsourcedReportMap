@@ -66,7 +66,14 @@ const addComment = async (req, res) => {
 
     const commentId = result.insertId
 
-    // Log audit
+    // Add points for commenting (2 points per comment)
+    // We'll track this through the audit log and calculate in the leaderboard
+    await logAudit(userId, 'COMMENT_POINTS', 'report_comments', commentId, null, {
+      points_awarded: 2,
+      reason: 'Comment added'
+    }, ipAddress)
+
+    // Log audit for comment creation
     await logAudit(userId, 'CREATE', 'report_comments', commentId, null, {
       report_id: id,
       parent_id,
@@ -75,7 +82,8 @@ const addComment = async (req, res) => {
 
     res.status(201).json({
       message: 'Comment added successfully',
-      comment_id: commentId
+      comment_id: commentId,
+      points_awarded: 2
     })
   } catch (error) {
     console.error('Add comment error:', error)

@@ -266,11 +266,53 @@ const updateUserStatus = async (req, res) => {
   }
 }
 
+// GET /users/leaderboard - Get user leaderboard
+const getLeaderboard = async (req, res) => {
+  try {
+    const [leaderboard] = await pool.execute(`
+      SELECT 
+        u.id,
+        u.username,
+        u.created_at,
+        COALESCE(SUM(
+          CASE 
+            WHEN rv.vote_type = 'upvote' THEN 10
+            WHEN rv.vote_type = 'verify' THEN 15
+            WHEN rv.vote_type = 'downvote' THEN -5
+            WHEN rv.vote_type = 'dispute' THEN -3
+            ELSE 0
+          END
+        ), 0) + 
+        COALESCE(COUNT(DISTINCT rc.id) * 2, 0) + 
+        COALESCE(COUNT(DISTINCT r.id) * 5, 0) as total_points,
+        COALESCE(COUNT(DISTINCT r.id), 0) as total_reports,
+        COALESCE(COUNT(DISTINCT rc.id), 0) as total_comments
+      FROM users u
+      LEFT JOIN reports r ON u.id = r.user_id
+      LEFT JOIN report_votes rv ON r.id = rv.report_id
+      LEFT JOIN report_comments rc ON u.id = rc.user_id
+      WHERE u.is_active = TRUE
+      GROUP BY u.id, u.username, u.created_at
+      ORDER BY total_points DESC, total_reports DESC
+      LIMIT 50
+    `)
+
+    res.json({
+      success: true,
+      leaderboard
+    })
+  } catch (error) {
+    console.error('Get leaderboard error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+}
+
 module.exports = {
   register,
   login,
   getProfile,
   updateProfile,
   getAllUsers,
-  updateUserStatus
+  updateUserStatus,
+  getLeaderboard
 } 

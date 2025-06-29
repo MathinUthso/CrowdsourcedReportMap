@@ -12,6 +12,7 @@ const metadata = require('./api/metadata')
 const users = require('./api/users')
 const comments = require('./api/comments')
 const votes = require('./api/votes')
+const stats = require('./api/stats')
 
 // Import middleware
 const { authenticateToken, requireRole, optionalAuth } = require('./middleware/auth')
@@ -22,6 +23,11 @@ const { listenPort, rateLimitWindowMs, rateLimitMax, uploadPath } = require('./s
 // Serve static files FIRST
 const app = express()
 app.use(express.static(path.join(__dirname, '../frontend-web')))
+
+// Redirect root to homepage
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend-web/redirect.html'))
+})
 
 // Security middleware
 app.use(helmet())
@@ -62,6 +68,14 @@ try {
 // Authentication routes (no auth required)
 app.post('/auth/register', users.register)
 app.post('/auth/login', users.login)
+
+// Stats routes (no auth required for homepage stats)
+app.get('/stats/homepage', stats.getHomepageStats)
+app.get('/users/leaderboard', users.getLeaderboard)
+
+// Dashboard stats (auth required)
+app.use('/stats/dashboard', authenticateToken)
+app.get('/stats/dashboard', stats.getDashboardStats)
 
 // Metadata routes (no auth required)
 app.get('/metadata', metadata.getMetadata)

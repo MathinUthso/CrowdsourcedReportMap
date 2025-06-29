@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Comments Test</title>
+    <script type="text/javascript" src="./settings.js"></script>
+    <link rel="stylesheet" type="text/css" href="./style.css" />
+</head>
+<body>
+    <div style="padding: 20px; max-width: 600px; margin: 0 auto;">
+        <h1>Comments Functionality Test</h1>
+        
+        <div id="test-comments-container" class="comments-container" style="display: block;">
+            <div class="comments-section">
+                <div class="comments-list">
+                    <div class="no-comments">No comments yet. Be the first to comment!</div>
+                </div>
+                <div class="add-comment-form">
+                    <textarea id="comment-input-test" placeholder="Add a comment..." maxlength="1000" rows="3"></textarea>
+                    <div class="comment-form-actions">
+                        <span class="char-count" id="char-count-test">0/1000</span>
+                        <button onclick="testSubmitComment()" class="submit-comment-btn">Post Comment</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>Test Controls</h3>
+            <button onclick="testLoadComments()">Test Load Comments</button>
+            <button onclick="testRenderComments()">Test Render Comments</button>
+            <button onclick="testToggleComments()">Test Toggle Comments</button>
+        </div>
+        
+        <div id="test-output" style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+            <h4>Test Output:</h4>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="./comments.js"></script>
+    <script>
+        // Test functions
+        function testLoadComments() {
+            console.log('Testing loadComments...');
+            loadComments(1); // Test with report ID 1
+            logTest('loadComments called for report ID 1');
+        }
+        
+        function testRenderComments() {
+            console.log('Testing renderComments...');
+            renderComments('test');
+            logTest('renderComments called for test report');
+        }
+        
+        function testToggleComments() {
+            console.log('Testing toggleComments...');
+            toggleComments('test');
+            logTest('toggleComments called for test report');
+        }
+        
+        function testSubmitComment() {
+            console.log('Testing submitComment...');
+            submitComment('test');
+            logTest('submitComment called for test report');
+        }
+        
+        function logTest(message) {
+            const results = document.getElementById('test-results');
+            const timestamp = new Date().toLocaleTimeString();
+            results.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        }
+        
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', function() {
+            logTest('Comments test page loaded');
+            logTest('Current user: ' + (currentUser ? currentUser.username : 'Not logged in'));
+        });
+    </script>
+</body>
+</html> 
