@@ -370,7 +370,7 @@ let routingMode = false;
           scaledSize: new google.maps.Size(40, 40)
         };
       
-      case 'GENJAM':
+      case 'ANARCHY':
         return {
           url: './Icons/Genjam.svg',
           scaledSize: new google.maps.Size(38, 38)
