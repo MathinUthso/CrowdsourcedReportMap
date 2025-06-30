@@ -286,11 +286,14 @@ async function login(event) {
 // Signup function
 async function signup(event) {
     event.preventDefault();
-    
     const username = document.getElementById('signup-username').value;
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
-    
+    const confirmPassword = document.getElementById('signup-confirm-password').value;
+    if (password !== confirmPassword) {
+        alert('Passwords do not match!');
+        return;
+    }
     try {
         const response = await fetch(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
@@ -306,6 +309,7 @@ async function signup(event) {
             authToken = data.token;
             currentUser = data.user;
             localStorage.setItem('authToken', authToken);
+            localStorage.setItem('user', JSON.stringify(currentUser));
             updateAuthUI();
             closeAuthModal();
             showNotification('Account created successfully!', 'success');

@@ -15,11 +15,11 @@
   </head>
   <body>
     <!-- Navigation Bar -->
-    <nav id="navbar">
-      <button id="info-btn" class="icon-btn" title="About"><img src="./res/info.svg" alt="Info" style="width:24px;height:24px;"></button>
-      <div class="nav-brand">Dhaka Alert</div>
-      <form id="map-search-form" style="flex:1; display:flex; justify-content:center; align-items:center;" onsubmit="return false;">
-        <input id="map-search-box" type="text" placeholder="Search map..." autocomplete="off" style="width: 100%; max-width: 350px; padding: 0.4rem 1rem; border-radius: 1rem; border: 1px solid #ccc; font-size: 1rem;" />
+    <nav   id    = "navbar">
+    <i     class = "fas fa-map-marked-alt"> </i>
+    <div   class = "nav-brand" style       = "display:inline; margin-left: 8px;">Dhaka Alert</div>
+    <form  id    = "map-search-form" style = "flex:1; display:flex; justify-content:center; align-items:center;" onsubmit = "return false;">
+    <input id    = "map-search-box" type   = "text" placeholder                                                           = "Search map..." autocomplete = "off" style = "width: 100%; max-width: 350px; padding: 0.4rem 1rem; border-radius: 1rem; border: 1px solid #ccc; font-size: 1rem;" />
       </form>
       <div class="nav-auth">
         <a href="./homepage.html" class="nav-btn" style="text-decoration: none; margin-right: 10px;" title="Home">
@@ -58,6 +58,7 @@
             <input type="text" id="signup-username" placeholder="Username" required>
             <input type="email" id="signup-email" placeholder="Email" required>
             <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required>
+            <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required>
             <button type="submit">Sign Up</button>
           </form>
           <p>Already have an account? <a href="#" onclick="showLoginForm()">Login</a></p>

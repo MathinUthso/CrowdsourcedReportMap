@@ -83,7 +83,11 @@ let routingMode = false;
     const username = document.getElementById('signup-username').value
     const email = document.getElementById('signup-email').value
     const password = document.getElementById('signup-password').value
-
+    const confirmPassword = document.getElementById('signup-confirm-password').value
+    if (password !== confirmPassword) {
+      alert('Passwords do not match!')
+      return
+    }
     requestAPIPost('/auth/register', JSON.stringify({
       username: username,
       email: email,
@@ -100,6 +104,7 @@ let routingMode = false;
         document.getElementById('signup-username').value = ''
         document.getElementById('signup-email').value = ''
         document.getElementById('signup-password').value = ''
+        document.getElementById('signup-confirm-password').value = ''
       } else {
         alert('Signup failed: ' + (data.error || 'Unknown error'))
       }
