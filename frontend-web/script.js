@@ -676,6 +676,9 @@ let routingMode = false;
       mapId: '55fdbe5b069cc36d75c6e2d6'
     })
 
+    // Initialize search functionality after map is created
+    initializeSearch();
+
     // try to center the map on current location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(function (position) {
@@ -897,7 +900,7 @@ let routingMode = false;
 
   // load Google Maps
   var script = document.createElement('script')
-  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init&libraries=marker'
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + settings.googleMapsAPIKey + '&callback=init&libraries=marker,places'
   script.async = true
   script.defer = true
   document.head.appendChild(script)
@@ -1433,6 +1436,171 @@ function addCommentsToReportPopup(reportId, content) {
   // Implementation of addCommentsToReportPopup function
   // This function should return the modified content with comments section added
   return content; // Placeholder return, actual implementation needed
+}
+
+// Search functionality
+function initializeSearch() {
+  const searchBox = document.getElementById('map-search-box');
+  const searchForm = document.getElementById('map-search-form');
+  
+  if (!searchBox || !searchForm) return;
+
+  // Handle form submission
+  searchForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    handleSearch(searchBox.value);
+  });
+
+  // Handle Enter key in search box
+  searchBox.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch(searchBox.value);
+    }
+  });
+
+  // Initialize Google Places Autocomplete if available
+  if (window.google && google.maps && google.maps.places) {
+    const autocomplete = new google.maps.places.Autocomplete(searchBox, {
+      types: ['geocode', 'establishment'],
+      componentRestrictions: { country: 'bd' } // Restrict to Bangladesh
+    });
+
+    autocomplete.addListener('place_changed', function() {
+      const place = autocomplete.getPlace();
+      if (place && place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        
+        // Center map on the selected location
+        if (map) {
+          map.setCenter({ lat, lng });
+          map.setZoom(15); // Zoom in to show the location
+          
+          // Add a temporary marker to show the searched location
+          if (window._searchMarker) {
+            window._searchMarker.setMap(null);
+          }
+          
+          window._searchMarker = new google.maps.Marker({
+            position: { lat, lng },
+            map: map,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 12,
+              fillColor: '#4285F4',
+              fillOpacity: 1,
+              strokeColor: '#fff',
+              strokeWeight: 3
+            },
+            title: place.name || 'Searched Location',
+            animation: google.maps.Animation.DROP
+          });
+
+          // Remove the marker after 3 seconds
+          setTimeout(() => {
+            if (window._searchMarker) {
+              window._searchMarker.setMap(null);
+              window._searchMarker = null;
+            }
+          }, 3000);
+        }
+      }
+    });
+  }
+}
+
+// Handle manual search (for coordinates or addresses)
+function handleSearch(query) {
+  if (!query.trim()) return;
+
+  // Check if it's coordinates (lat,lng format)
+  const coordMatch = query.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+    
+    if (map) {
+      map.setCenter({ lat, lng });
+      map.setZoom(15);
+      
+      // Add temporary marker
+      if (window._searchMarker) {
+        window._searchMarker.setMap(null);
+      }
+      
+      window._searchMarker = new google.maps.Marker({
+        position: { lat, lng },
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: '#4285F4',
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 3
+        },
+        title: 'Searched Location',
+        animation: google.maps.Animation.DROP
+      });
+
+      setTimeout(() => {
+        if (window._searchMarker) {
+          window._searchMarker.setMap(null);
+          window._searchMarker = null;
+        }
+      }, 3000);
+    }
+    return;
+  }
+
+  // If not coordinates, try to geocode the address
+  if (window.google && google.maps && google.maps.Geocoder) {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: query }, function(results, status) {
+      if (status === 'OK' && results[0]) {
+        const location = results[0].geometry.location;
+        const lat = location.lat();
+        const lng = location.lng();
+        
+        if (map) {
+          map.setCenter({ lat, lng });
+          map.setZoom(15);
+          
+          // Add temporary marker
+          if (window._searchMarker) {
+            window._searchMarker.setMap(null);
+          }
+          
+          window._searchMarker = new google.maps.Marker({
+            position: { lat, lng },
+            map: map,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 12,
+              fillColor: '#4285F4',
+              fillOpacity: 1,
+              strokeColor: '#fff',
+              strokeWeight: 3
+            },
+            title: results[0].formatted_address,
+            animation: google.maps.Animation.DROP
+          });
+
+          setTimeout(() => {
+            if (window._searchMarker) {
+              window._searchMarker.setMap(null);
+              window._searchMarker = null;
+            }
+          }, 3000);
+        }
+      } else {
+        alert('Location not found. Please try a different search term or coordinates (lat,lng format).');
+      }
+    });
+  } else {
+    alert('Search functionality requires Google Maps API. Please try entering coordinates in lat,lng format.');
+  }
 }
   
   

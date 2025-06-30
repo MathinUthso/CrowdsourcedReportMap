@@ -572,10 +572,14 @@ label {
   border       : 1px solid #ccc;
   font-size    : 1rem;
   outline      : none;
-  transition   : border-color 0.2s;
+  transition   : border-color 0.2s, box-shadow 0.2s;
 }
 #map-search-box:focus {
   border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+#map-search-box:hover {
+  border-color: #999;
 }
 @media only screen and (max-width: 768px) {
   #map-search-box {

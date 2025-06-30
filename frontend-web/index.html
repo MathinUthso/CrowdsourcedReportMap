@@ -19,7 +19,10 @@
       <button id="info-btn" class="icon-btn" title="About"><img src="./res/info.svg" alt="Info" style="width:24px;height:24px;"></button>
       <div class="nav-brand">Dhaka Alert</div>
       <form id="map-search-form" style="flex:1; display:flex; justify-content:center; align-items:center;" onsubmit="return false;">
-        <input id="map-search-box" type="text" placeholder="Search map..." autocomplete="off" style="width: 100%; max-width: 350px; padding: 0.4rem 1rem; border-radius: 1rem; border: 1px solid #ccc; font-size: 1rem;" />
+        <div style="position:relative; width:100%; max-width:350px;">
+          <input id="map-search-box" type="text" placeholder="Search location or coordinates..." autocomplete="off" style="width: 100%; padding: 0.4rem 1rem 0.4rem 2.5rem; border-radius: 1rem; border: 1px solid #ccc; font-size: 1rem; outline: none; transition: border-color 0.2s;" />
+          <i class="fas fa-search" style="position:absolute; left:0.8rem; top:50%; transform:translateY(-50%); color:#666; font-size:0.9rem;"></i>
+        </div>
       </form>
       <div class="nav-auth">
         <a href="./homepage.html" class="nav-btn" style="text-decoration: none; margin-right: 10px;" title="Home">
